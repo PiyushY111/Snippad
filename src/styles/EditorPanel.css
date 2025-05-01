@@ -1,0 +1,48 @@
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1rem;
+  max-width: 50%;
+  height: calc(100vh - 200px);
+  overflow: auto;
+}
+
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 0.5rem;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(143, 95, 232, 0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  min-height: 200px;
+}
+
+.editor-container:hover {
+  box-shadow: 0 4px 20px rgba(143, 95, 232, 0.2);
+  transform: translateY(-2px);
+}
+
+.editor-label {
+  background: linear-gradient(90deg, #9370DB 0%, #8A2BE2 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .editor-panel {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  .editor-container {
+    min-height: 250px;
+  }
+}

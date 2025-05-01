@@ -1,0 +1,56 @@
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(143, 95, 232, 0.1);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.run-btn {
+  background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
+}
+
+.run-btn:hover {
+  background: linear-gradient(135deg, #8A2BE2 0%, #7B68EE 100%);
+}
+
+.clear-btn {
+  background: linear-gradient(135deg, #ff8080 0%, #ff5252 100%);
+}
+
+.clear-btn:hover {
+  background: linear-gradient(135deg, #ff5252 0%, #ff3838 100%);
+}
+
+.export-btn {
+  background: linear-gradient(135deg, #4fb3d4 0%, #2979ff 100%);
+}
+
+.export-btn:hover {
+  background: linear-gradient(135deg, #2979ff 0%, #2962ff 100%);
+}
