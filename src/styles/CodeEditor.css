@@ -123,3 +123,92 @@
 .token.deleted {
   color: #ff80a4;
 }
+
+/* Cursor animation */
+.monaco-editor .cursor {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Code change highlight animation */
+.monaco-editor .view-overlays .current-line {
+  animation: highlight 1.5s ease-out;
+}
+
+@keyframes highlight {
+  0% { background-color: rgba(147, 112, 219, 0.2); }
+  100% { background-color: transparent; }
+}
+
+/* Editor container animations */
+.editor-container {
+  animation: fadeIn 0.5s ease-out;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.editor-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(143, 95, 232, 0.15);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Syntax highlighting animations */
+.token {
+  transition: color 0.3s ease;
+}
+
+.token:hover {
+  color: var(--accent-color) !important;
+}
+
+/* Line number animations */
+.monaco-editor .margin-view-overlays .cgmr {
+  transition: background-color 0.3s ease;
+}
+
+.monaco-editor .margin-view-overlays .cgmr:hover {
+  background-color: rgba(147, 112, 219, 0.1);
+}
+
+/* Selection animation */
+.monaco-editor .selected-text {
+  animation: selectPulse 2s infinite;
+}
+
+@keyframes selectPulse {
+  0% { background-color: rgba(147, 112, 219, 0.2); }
+  50% { background-color: rgba(147, 112, 219, 0.3); }
+  100% { background-color: rgba(147, 112, 219, 0.2); }
+}
+
+/* Editor panel transitions */
+.editor-panel {
+  transition: all 0.3s ease;
+}
+
+.editor-panel:hover .editor-container {
+  transform: scale(1.01);
+}
+
+/* Smooth theme transition */
+.monaco-editor {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Active line highlight */
+.monaco-editor .view-overlays .current-line {
+  border-left: 3px solid var(--primary-color);
+  transition: border-left-color 0.3s ease;
+}
+
+.monaco-editor .view-overlays .current-line:hover {
+  border-left-color: var(--accent-color);
+}
