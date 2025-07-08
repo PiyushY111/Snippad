@@ -15,12 +15,58 @@
   box-shadow: 0 4px 20px rgba(143, 95, 232, 0.2);
 }
 
-.output-label {
+/* Toolbar/Header */
+.output-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: linear-gradient(90deg, #9370DB 0%, #8A2BE2 100%);
-  color: white;
+  color: #fff;
   padding: 0.5rem 1rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.dark .output-toolbar {
+  border-bottom: 1px solid #444;
+}
+.output-title {
+  letter-spacing: 0.05em;
+}
+.output-toolbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.output-btn {
+  background: rgba(255,255,255,0.12);
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.3rem 0.5rem;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.output-btn:focus, .output-btn:hover {
+  background: rgba(255,255,255,0.25);
+  box-shadow: 0 0 0 2px #a78bfa;
+}
+.dark .output-btn {
+  background: rgba(30,30,40,0.2);
+  color: #fff;
+}
+.dark .output-btn:focus, .dark .output-btn:hover {
+  background: rgba(30,30,40,0.4);
+}
+
+/* Output Area */
+.output-iframe-wrapper {
+  flex: 1;
+  background: #fff;
+  position: relative;
+}
+.dark .output-iframe-wrapper {
+  background: #18181b;
 }
 
 .output-iframe {
@@ -30,4 +76,46 @@
   min-height: 400px;
   border: none;
   background: white;
+}
+.dark .output-iframe {
+  background: #18181b;
+}
+
+/* Status Bar */
+.output-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.3rem 1rem;
+  background: #f3f4f6;
+  font-size: 0.85rem;
+  border-top: 1px solid #e5e7eb;
+}
+.dark .output-status-bar {
+  background: #232336;
+  border-top: 1px solid #444;
+}
+.status-live {
+  color: #22c55e;
+  font-weight: 600;
+}
+.status-refreshed {
+  color: #facc15;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .output-toolbar, .output-status-bar {
+    font-size: 0.95rem;
+    padding: 0.4rem 0.5rem;
+  }
+  .output-title {
+    font-size: 0.95rem;
+  }
+  .output-btn {
+    padding: 0.2rem 0.3rem;
+  }
+  .output-iframe {
+    min-height: 220px;
+  }
 }

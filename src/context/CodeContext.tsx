@@ -16,8 +16,7 @@ interface CodeContextType {
 }
 
 const defaultCode = {
-  html: `<h1>Hello!</h1>
-<p>Write HTML, CSS or JavaScript code here and click 'Run Code'.</p>`,
+  html: `<h1>Welcome to the Code Editor! </h1>`,
   css: '/* CSS goes here */',
   javascript: '// JS code here'
 };

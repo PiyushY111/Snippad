@@ -22,3 +22,22 @@
     padding: 0.5rem;
   }
 }
+
+@keyframes carousel-move {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-carousel-move {
+  animation: carousel-move 40s linear infinite;
+  will-change: transform;
+  min-width: 200%;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
