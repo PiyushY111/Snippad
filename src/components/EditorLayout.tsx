@@ -1,13 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { CodeEditor } from './CodeEditor';
 import { Play, Trash2, Download, Code2, Plus, X, Edit2, FileText, FileCode2, FileJson, FileType, FileTerminal, User, Settings } from 'lucide-react';
 import axios from 'axios';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
-import { useCallback } from 'react';
+import { Sidebar } from './Sidebar';
+import { FileTabs } from './FileTabs';
+import { OutputPanel } from './OutputPanel';
+import { TerminalPanel } from './TerminalPanel';
+import { SnippetsModal } from './modals/SnippetsModal';
+import { NewFileModal } from './modals/NewFileModal';
+import { LanguageSupportModal } from './modals/LanguageSupportModal';
+import { CommandPaletteModal } from './modals/CommandPaletteModal';
+import type { File, Snippet, Runtime, LanguageOption } from '../types';
+import toast, { Toaster } from 'react-hot-toast';
+import { ErrorBoundary } from './ErrorBoundary';
 
-const languageOptions = [
+const languageOptions: LanguageOption[] = [
   { label: 'JavaScript', value: 'javascript', ext: 'js', icon: <FileCode2 size={16} /> },
   { label: 'TypeScript', value: 'typescript', ext: 'ts', icon: <FileCode2 size={16} /> },
   { label: 'Python', value: 'python', ext: 'py', icon: <FileTerminal size={16} /> },
@@ -27,34 +37,49 @@ const languageOptions = [
   { label: 'JSON', value: 'json', ext: 'json', icon: <FileJson size={16} /> },
 ];
 
-const defaultFiles = [
+const defaultFiles: File[] = [
   { id: 1, name: 'index.html', language: 'html', code: `<h1>Hello!</h1>\n<p>Write HTML, CSS or JavaScript code here and click 'Run Code'.</p>` },
   { id: 2, name: 'style.css', language: 'css', code: '/* CSS goes here */' },
   { id: 3, name: 'script.js', language: 'javascript', code: 'console.log("Hello from Node.js!");\nconsole.log("Current time:", new Date().toLocaleString());\n\n// Simple calculation\na = 5;\nb = 3;\nconsole.log(`${a} + ${b} = ${a + b}`);\n\n// Array example\nconst fruits = ["apple", "banana", "orange"];\nconsole.log("Fruits:", fruits);\nconsole.log("First fruit:", fruits[0]);' },
 ];
 
+const getFileIcon = (file: File) => {
+  const ext = file.name.split('.').pop();
+  switch (ext) {
+    case 'js': return <FileCode2 size={16} className="text-yellow-400" />;
+    case 'ts': return <FileCode2 size={16} className="text-blue-400" />;
+    case 'html': return <FileCode2 size={16} className="text-orange-400" />;
+    case 'css': return <FileCode2 size={16} className="text-sky-400" />;
+    case 'py': return <FileTerminal size={16} className="text-yellow-300" />;
+    case 'sh': return <FileTerminal size={16} className="text-green-400" />;
+    case 'json': return <FileJson size={16} className="text-lime-400" />;
+    case 'cpp': return <FileCode2 size={16} className="text-blue-300" />;
+    default: return <FileType size={16} className="text-gray-400" />;
+  }
+};
+
 export const EditorLayout = () => {
-  const [runtimes, setRuntimes] = useState<any[]>([]); // <-- Move this to the very top
-  const [files, setFiles] = useState(defaultFiles);
-  const [activeFileId, setActiveFileId] = useState(1);
+  const [runtimes, setRuntimes] = useState<Runtime[]>([]);
+  const [files, setFiles] = useState<File[]>(defaultFiles);
+  const [activeFileId, setActiveFileId] = useState<number>(1);
   const [output, setOutput] = useState<{ [id: number]: string }>({});
   const [outputType, setOutputType] = useState<{ [id: number]: 'success' | 'error' | 'info' }>({});
   const [renamingId, setRenamingId] = useState<number|null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [showAddFile, setShowAddFile] = useState(false);
-  const [newLang, setNewLang] = useState(languageOptions[0].value);
-  const [newName, setNewName] = useState('');
+  const [renameValue, setRenameValue] = useState<string>('');
+  const [showAddFile, setShowAddFile] = useState<boolean>(false);
+  const [newLang, setNewLang] = useState<string>(languageOptions[0].value);
+  const [newName, setNewName] = useState<string>('');
 
   // Version history state
   const [history, setHistory] = useState<{ [id: number]: string[] }>({});
   const [historyIndex, setHistoryIndex] = useState<{ [id: number]: number }>({});
 
   // Drag-and-drop file upload
-  const [dragActive, setDragActive] = useState(false);
+  const [dragActive, setDragActive] = useState<boolean>(false);
 
   // Code snippets
-  const [showSnippets, setShowSnippets] = useState(false);
-  const codeSnippets = [
+  const [showSnippets, setShowSnippets] = useState<boolean>(false);
+  const codeSnippets: Snippet[] = [
     { name: 'For Loop (JS)', language: 'javascript', code: 'for (let i = 0; i < 10; i++) {\n  console.log(i);\n}' },
     { name: 'Function (Python)', language: 'python', code: 'def greet(name):\n    print(f"Hello, {name}!")' },
     { name: 'Hello World (C++)', language: 'cpp', code: '#include <iostream>\nint main() {\n  std::cout << "Hello, World!" << std::endl;\n  return 0;\n}' },
@@ -63,7 +88,7 @@ export const EditorLayout = () => {
     { name: 'FizzBuzz (Python)', language: 'python', code: 'for i in range(1, 101):\n    if i % 15 == 0:\n        print("FizzBuzz")\n    elif i % 3 == 0:\n        print("Fizz")\n    elif i % 5 == 0:\n        print("Buzz")\n    else:\n        print(i)' },
   ];
   // Insert snippet at cursor using CodeEditor ref
-  const codeEditorRef = useRef<any>(null);
+  const codeEditorRef = useRef<any>(null); // TODO: type this ref properly
   const handleInsertSnippet = (snippet: string) => {
     if (codeEditorRef.current && codeEditorRef.current.insertSnippet) {
       codeEditorRef.current.insertSnippet(snippet);
@@ -222,9 +247,9 @@ export const EditorLayout = () => {
       const key = res.data.key;
       const url = `https://hastebin.com/${key}.${languageOptions.find(l => l.value === activeFile.language)?.ext || 'txt'}`;
       await navigator.clipboard.writeText(url);
-      alert('Shareable link copied to clipboard!\n' + url);
+      toast.success('Shareable link copied to clipboard!\n' + url);
     } catch (e) {
-      alert('Failed to share code.');
+      toast.error('Failed to share code.');
     }
   };
 
@@ -251,7 +276,7 @@ export const EditorLayout = () => {
   };
 
   // Integrated Terminal
-  const [showTerminal, setShowTerminal] = useState(false);
+  const [showTerminal, setShowTerminal] = useState<boolean>(false);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<any>(null);
   
@@ -414,24 +439,24 @@ export const EditorLayout = () => {
   }, [showTerminal, files, activeFileId]);
 
   // Status bar state
-  const [status, setStatus] = useState('Ready');
-  const [cursor, setCursor] = useState({ line: 1, col: 1 });
+  const [status, setStatus] = useState<string>('Ready');
+  const [cursor, setCursor] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
   // Easter egg state
-  const [showEgg, setShowEgg] = useState(false);
+  const [showEgg, setShowEgg] = useState<boolean>(false);
 
   // Sidebar state
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState<boolean>(true);
 
   // Accent color state
-  const [accent, setAccent] = useState(localStorage.getItem('accent-color') || '#a78bfa');
+  const [accent, setAccent] = useState<string>(localStorage.getItem('accent-color') || '#a78bfa');
   useEffect(() => {
     document.documentElement.style.setProperty('--accent-color', accent);
     localStorage.setItem('accent-color', accent);
   }, [accent]);
 
   // Command palette state
-  const [showPalette, setShowPalette] = useState(false);
-  const [paletteQuery, setPaletteQuery] = useState('');
+  const [showPalette, setShowPalette] = useState<boolean>(false);
+  const [paletteQuery, setPaletteQuery] = useState<string>('');
   const handleRunCode = async () => {
     if ([
       'python', 'cpp', 'c', 'java', 'csharp', 'go', 'ruby', 'php', 'rust', 'swift', 'kotlin', 'bash', 'typescript'
@@ -440,7 +465,7 @@ export const EditorLayout = () => {
       setOutputType(t => ({ ...t, [activeFileId]: 'info' }));
       try {
         // Find the correct runtime for the selected language, considering aliases
-        const runtime = runtimes.find((r: any) =>
+        const runtime = runtimes.find((r: Runtime) =>
           r.language === activeFile.language ||
           (r.aliases && r.aliases.includes(activeFile.language))
         );
@@ -528,24 +553,8 @@ export const EditorLayout = () => {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // File icon helper
-  const getFileIcon = (file: any) => {
-    const ext = file.name.split('.').pop();
-    switch (ext) {
-      case 'js': return <FileCode2 size={16} className="text-yellow-400" />;
-      case 'ts': return <FileCode2 size={16} className="text-blue-400" />;
-      case 'html': return <FileCode2 size={16} className="text-orange-400" />;
-      case 'css': return <FileCode2 size={16} className="text-sky-400" />;
-      case 'py': return <FileTerminal size={16} className="text-yellow-300" />;
-      case 'sh': return <FileTerminal size={16} className="text-green-400" />;
-      case 'json': return <FileJson size={16} className="text-lime-400" />;
-      case 'cpp': return <FileCode2 size={16} className="text-blue-300" />;
-      default: return <FileType size={16} className="text-gray-400" />;
-    }
-  };
-
   // File search/filter state
-  const [fileSearch, setFileSearch] = useState('');
+  const [fileSearch, setFileSearch] = useState<string>('');
   // Drag-and-drop state
   const [draggedFileId, setDraggedFileId] = useState<number|null>(null);
 
@@ -605,7 +614,20 @@ export const EditorLayout = () => {
 
   // Carousel auto-scroll state
   const carouselRef = useRef<HTMLDivElement>(null);
-  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
+  const [isCarouselHovered, setIsCarouselHovered] = useState<boolean>(false);
+  
+  // Language support state
+  const [showLanguageSupport, setShowLanguageSupport] = useState<boolean>(false);
+  
+  // Handle language selection from carousel
+  const handleLanguageSelect = (lang: LanguageOption) => {
+    // Create a new file with the selected language
+    const newId = files.length ? Math.max(...files.map(f => f.id)) + 1 : 1;
+    const template = languageTemplates[lang.value as keyof typeof languageTemplates] || `// ${lang.label} file\n`;
+    setFiles(f => [...f, { id: newId, name: `new.${lang.ext}`, language: lang.value, code: template }]);
+    setActiveFileId(newId);
+  };
+  
   // Infinite auto-scroll effect
   useEffect(() => {
     if (!carouselRef.current || isCarouselHovered) return;
@@ -687,377 +709,236 @@ export const EditorLayout = () => {
       .catch(() => setRuntimes([]));
   }, []);
 
+  // Memoized getFileIcon
+  const getFileIcon = useCallback((file: File) => {
+    const ext = file.name.split('.').pop();
+    switch (ext) {
+      case 'js': return <FileCode2 size={16} className="text-yellow-400" />;
+      case 'ts': return <FileCode2 size={16} className="text-blue-400" />;
+      case 'html': return <FileCode2 size={16} className="text-orange-400" />;
+      case 'css': return <FileCode2 size={16} className="text-sky-400" />;
+      case 'py': return <FileTerminal size={16} className="text-yellow-300" />;
+      case 'sh': return <FileTerminal size={16} className="text-green-400" />;
+      case 'json': return <FileJson size={16} className="text-lime-400" />;
+      case 'cpp': return <FileCode2 size={16} className="text-blue-300" />;
+      default: return <FileType size={16} className="text-gray-400" />;
+    }
+  }, []);
+
+  // Memoized activeFile
+  const memoizedActiveFile = useMemo(() => files.find(f => f.id === activeFileId) || files[0], [files, activeFileId]);
+
+  // Memoized filteredFiles for Sidebar
+  const memoizedFilteredFiles = useMemo(() => files.filter(f => f.name.toLowerCase().includes(fileSearch.toLowerCase())), [files, fileSearch]);
+
+  // Memoize handler functions passed as props
+  const memoizedSetActiveFileId = useCallback(setActiveFileId, []);
+  const memoizedSetFileSearch = useCallback(setFileSearch, []);
+  const memoizedHandleAddFile = useCallback(handleAddFile, []);
+  const memoizedSetShowSnippets = useCallback(setShowSnippets, []);
+  const memoizedSetShowLanguageSupport = useCallback(setShowLanguageSupport, []);
+  const memoizedReorderFiles = useCallback(reorderFiles, [files]);
+
   return (
-    <div
-      className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 flex flex-row font-mono text-gray-100"
-      style={{ minHeight: '100dvh', position: 'relative' }}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-    >
-      {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-gray-950/80 via-gray-900/70 to-gray-800/80 border-r border-purple-900/40 shadow-2xl backdrop-blur-xl ${showSidebar ? 'w-48 min-w-[140px] translate-x-0' : 'w-14 min-w-[48px] -translate-x-2'} z-30 ${showSidebar ? 'sidebar-open' : 'sidebar-collapsed'} transition-all duration-500 ease-in-out`} style={{ boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)' }}>
-        <div className="flex items-center justify-between px-3 py-4 border-b border-purple-900/30">
-          <span className="font-bold text-lg tracking-wide text-purple-300 flex items-center gap-2 cursor-pointer select-none" onClick={() => setShowEgg(e => !e)}>
-            <span className="transition-transform duration-300 hover:rotate-12">🦄</span>
-            {'Files'}
-          </span>
+    <ErrorBoundary>
+      <div
+        className="min-h-screen bg-gradient-to-br from-[#0a0d14] via-[#0d1117] to-[#161b22] flex flex-row font-['JetBrains_Mono',_monospace] text-[#c9d1d9] relative overflow-hidden"
+        style={{ minHeight: '100dvh', position: 'relative' }}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+      >
+        <Toaster position="top-right" />
+        {/* Animated background grid */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, #58a6ff 1px, transparent 0)`,
+            backgroundSize: '20px 20px'
+          }}></div>
         </div>
-        {/* File search/filter input */}
-        <div className="px-2 py-1">
-          <input
-            type="text"
-            value={fileSearch}
-            onChange={e => setFileSearch(e.target.value)}
-            placeholder="Search files..."
-            className="w-full px-2 py-1 rounded bg-gray-800 text-purple-100 border border-purple-900/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] text-xs font-mono"
-            spellCheck={false}
+        {/* Sidebar */}
+        <Sidebar
+          files={files}
+          activeFileId={activeFileId}
+          setActiveFileId={memoizedSetActiveFileId}
+          fileSearch={fileSearch}
+          setFileSearch={memoizedSetFileSearch}
+          handleAddFile={memoizedHandleAddFile}
+          setShowSnippets={memoizedSetShowSnippets}
+          setShowLanguageSupport={memoizedSetShowLanguageSupport}
+          getFileIcon={getFileIcon}
+          showSidebar={showSidebar}
+          reorderFiles={memoizedReorderFiles}
+        />
+        
+        {/* Main Area */}
+        <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${showSidebar ? 'ml-64' : 'ml-16'}`}>
+          {/* Header */}
+          <header className="w-full py-4 flex flex-row items-center justify-between bg-gradient-to-r from-[#0d1117] via-[#161b22] to-[#0d1117] border-b border-[#30363d]/50 px-6 relative overflow-hidden">
+            {/* Animated background effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#58a6ff]/5 to-transparent animate-pulse"></div>
+            
+            <div className="flex items-center space-x-4 relative z-10">
+              <div className="relative">
+                <span className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-[#58a6ff] via-[#1f6feb] to-[#a371f7] shadow-2xl animate-spin-slow text-white font-bold" style={{ animationPlayState: showEgg ? 'running' : 'paused' }}>⚡</span>
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#58a6ff]/20 to-[#a371f7]/20 blur-lg animate-pulse"></div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#58a6ff] via-[#1f6feb] to-[#a371f7] tracking-tight">SNIPPAD</span>
+                <span className="text-xs text-[#7d8590] font-mono uppercase tracking-widest">PRO</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-lg bg-[#21262d]/50 border border-[#30363d]/50">
+                <span className="w-2 h-2 rounded-full bg-[#238636] animate-pulse"></span>
+                <span className="text-xs text-[#7d8590] font-mono">LIVE</span>
+              </div>
+              <span className="hidden lg:block text-sm text-[#7d8590] tracking-wide font-medium">Next-Gen Code Editor</span>
+            </div>
+          </header>
+          
+          {/* File Tabs (horizontal, VS Code style) */}
+          <FileTabs
+            files={files}
+            activeFileId={activeFileId}
+            setActiveFileId={setActiveFileId}
+            handleDeleteFile={handleDeleteFile}
+            getFileIcon={getFileIcon}
+            showSidebar={showSidebar}
+          />
+          
+          {/* Main Content Area */}
+          <main className="flex-1 flex flex-col md:flex-row justify-center items-start gap-6 md:gap-8 px-6 md:px-8 py-6 max-w-[1600px] w-full mx-auto transition-all duration-300">
+            <section className="flex flex-col gap-4 w-full md:w-[45%] min-w-[0] max-w-full md:max-w-[600px] h-full">
+              {/* Active File Editor */}
+              <div className="rounded-2xl shadow-2xl bg-gradient-to-br from-[#0d1117] via-[#161b22] to-[#0d1117] border border-[#30363d]/50 hover:shadow-[#58a6ff]/20 transition-all duration-500 group flex-1 min-h-[200px] md:min-h-[250px] max-h-[70vh] md:max-h-none overflow-auto relative">
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#58a6ff]/5 via-transparent to-[#a371f7]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                <div className="rounded-t-2xl px-6 py-4 bg-gradient-to-r from-[#161b22] to-[#21262d] text-[#c9d1d9] font-bold text-sm tracking-wide border-b border-[#30363d]/50 shadow-lg group-hover:shadow-xl flex items-center justify-between relative z-10">
+                  <span className="flex items-center gap-3">
+                    <span className="p-2 rounded-lg bg-[#21262d] border border-[#30363d]/50">
+                      {getFileIcon(activeFile)}
+                    </span>
+                    <span className="font-extrabold">{activeFile.name}</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-[#21262d] border border-[#30363d]/50 text-xs text-[#7d8590] uppercase font-mono font-bold">{activeFile.language}</span>
+                    <span className="w-2 h-2 rounded-full bg-[#238636] animate-pulse"></span>
+                  </div>
+                </div>
+                <div className="p-4 min-h-[200px] md:min-h-[250px] h-full relative z-10">
+                  <CodeEditor ref={codeEditorRef} language={activeFile.language} value={activeFile.code} onChange={handleCodeChange} />
+                </div>
+              </div>
+            </section>
+            {/* Output Panel */}
+            <OutputPanel
+              activeFile={activeFile}
+              activeFileId={activeFileId}
+              output={output}
+              outputType={outputType}
+              handleClearOutput={handleClearOutput}
+            />
+          </main>
+          
+          {/* Bottom Bar */}
+          <footer className="w-full flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6 py-6 md:py-8 bg-gradient-to-r from-[#0d1117] via-[#161b22] to-[#0d1117] border-t border-[#30363d]/50 mt-4 relative">
+            {/* Background glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#58a6ff]/5 to-transparent opacity-50"></div>
+            
+            <button
+              className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-[#238636] to-[#2ea043] hover:from-[#2ea043] hover:to-[#3fb950] text-white font-bold shadow-2xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#238636] active:scale-95 hover:scale-105 relative z-10"
+              onClick={handleRunCode}
+              title="Run the code (Ctrl+Enter)"
+            >
+              <Play size={20} />  Run Code
+            </button>
+            <button
+              className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-[#da3633] to-[#f85149] hover:from-[#f85149] hover:to-[#ff6b6b] text-white font-bold shadow-2xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#da3633] active:scale-95 hover:scale-105 relative z-10"
+              onClick={clearCode}
+              title="Clear all code in all files"
+            >
+              <Trash2 size={20} />  Clear Code
+            </button>
+            <button
+              className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-[#1f6feb] to-[#388bfd] hover:from-[#388bfd] hover:to-[#58a6ff] text-white font-bold shadow-2xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#1f6feb] active:scale-95 hover:scale-105 relative z-10"
+              onClick={exportCode}
+              title="Export as HTML file"
+            >
+              <Download size={20} />  Export
+            </button>
+            
+          </footer>
+          
+          {/* Toggle Terminal Button */}
+          <button
+            className="fixed bottom-6 right-6 z-50 px-4 py-2 rounded-lg bg-[#21262d] text-[#c9d1d9] shadow-lg hover:bg-[#30363d] transition-all border border-[#30363d] font-medium"
+            onClick={() => setShowTerminal(t => !t)}
+            title="Toggle Node.js Terminal"
+          >
+            {showTerminal ? 'Hide Terminal' : 'Show Terminal'}
+          </button>
+          
+          {/* Node.js Terminal Panel */}
+          <TerminalPanel
+            showTerminal={showTerminal}
+            setShowTerminal={setShowTerminal}
+            terminalRef={terminalRef}
           />
         </div>
-        <div className="flex-1 overflow-y-auto py-2 px-1 flex flex-col gap-2">
-          {filteredFiles.map((file, idx) => (
-            <div
-              key={file.id}
-              className={`flex items-center justify-center ${showSidebar ? 'gap-2 px-2' : 'px-0'} py-2 rounded-lg cursor-pointer text-sm transition-all duration-200 ${file.id === activeFileId ? 'bg-gradient-to-r from-purple-900/60 to-purple-700/40 text-purple-200 font-bold shadow-lg scale-105' : 'hover:bg-gray-800/70 text-gray-200'} group`}
-              onClick={() => setActiveFileId(file.id)}
-              style={{ minHeight: 40 }}
-              draggable
-              onDragStart={() => setDraggedFileId(file.id)}
-              onDragOver={e => { e.preventDefault(); }}
-              onDrop={e => {
-                e.preventDefault();
-                if (draggedFileId !== null && draggedFileId !== file.id) {
-                  const fromIdx = files.findIndex(f => f.id === draggedFileId);
-                  const toIdx = files.findIndex(f => f.id === file.id);
-                  reorderFiles(fromIdx, toIdx);
-                }
-                setDraggedFileId(null);
-              }}
-              onDragEnd={() => setDraggedFileId(null)}
-            >
-              <span className="transition-transform duration-200 group-hover:scale-125 group-active:scale-95">
-                {getFileIcon(file)}
-              </span>
-              {showSidebar && <span className="truncate transition-all duration-200">{file.name}</span>}
-              {file.id === activeFileId && showSidebar && <span className="ml-auto text-xs text-purple-400 animate-pulse">●</span>}
-            </div>
-          ))}
-        </div>
-        <div className="p-2 border-t border-purple-900/30 flex flex-col gap-3">
-          {showSidebar && (
-            <>
-              <button onClick={handleAddFile} className="w-full py-2 rounded-xl bg-gradient-to-r from-[var(--accent-color)] to-purple-700 hover:from-purple-700 hover:to-purple-900 text-white font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]" title="New File">
-                <Plus size={18} /><span>New File</span>
-              </button>
-              <button onClick={() => setShowSnippets(true)} className="w-full py-2 rounded-xl bg-gradient-to-r from-gray-700 to-gray-900 hover:from-purple-800 hover:to-purple-900 text-purple-200 font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-purple-400" title="Snippets">
-                <Code2 size={18} /><span>Snippets</span>
-              </button>
-            </>
-          )}
-          <div className="flex flex-col gap-1 mt-2 items-center">
-            <label className="text-xs text-purple-200 font-semibold mb-1">Accent</label>
-            <input type="color" value={accent} onChange={e => setAccent(e.target.value)} className="w-8 h-8 rounded-full border-2 border-purple-300 bg-transparent cursor-pointer shadow-md focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] transition-all" title="Pick accent color" />
-          </div>
-        </div>
-        {/* Removed settings and user buttons for a cleaner sidebar */}
-      </aside>
-      {/* Floating action buttons for collapsed sidebar */}
-      {!showSidebar && (
-        <div className="fixed left-5 bottom-28 flex flex-col gap-4 z-50">
-          <button onClick={handleAddFile} className="p-4 rounded-full bg-gradient-to-br from-[var(--accent-color)] to-purple-700 text-white shadow-2xl hover:scale-110 hover:rotate-6 transition-all duration-200 border-2 border-purple-300 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]" title="New File">
-            <Plus size={24} />
-          </button>
-          <button onClick={() => setShowSnippets(true)} className="p-4 rounded-full bg-gradient-to-br from-gray-700 to-purple-900 text-purple-200 shadow-2xl hover:scale-110 hover:-rotate-6 transition-all duration-200 border-2 border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400" title="Snippets">
-            <Code2 size={24} />
-          </button>
-        </div>
-      )}
-      {/* Main Area */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-500 ease-in-out ${showSidebar ? 'ml-48' : 'ml-14'}`}>
-        {/* Header */}
-        <header className="w-full py-3 md:py-4 flex flex-row items-center justify-between bg-gradient-to-r from-gray-950 via-gray-900 to-gray-800 shadow-xl border-b border-gray-800 px-4">
-          <div className="flex items-center space-x-2">
-            <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br from-[var(--accent-color)] to-purple-900 shadow-lg animate-spin-slow" style={{ animationPlayState: showEgg ? 'running' : 'paused' }}>🦄</span>
-            <span className="text-lg md:text-2xl font-extrabold" style={{ color: 'var(--accent-color)' }}>SNIPPAD</span>
-          </div>
-          <span className="hidden md:block text-base text-purple-100 tracking-wide font-medium drop-shadow">Your modern code playground</span>
-        </header>
-        {/* Language Carousel */}
-        <div
-          className="relative w-full bg-gradient-to-r from-gray-950 via-gray-900 to-gray-800 border-b border-gray-800 py-2 flex items-center"
-          style={{ height: 60 }}
-          onMouseEnter={() => setIsCarouselHovered(true)}
-          onMouseLeave={() => setIsCarouselHovered(false)}
-        >
-          {/* Carousel Content */}
-          <div
-            ref={carouselRef}
-            className="flex gap-4 overflow-x-hidden px-10 w-full select-none scrollbar-none"
-            style={{ scrollBehavior: 'smooth' }}
-          >
-            {[...languageOptions, ...languageOptions].map((lang, idx) => (
-              <div
-                key={lang.value + '-' + idx}
-                className="flex flex-col items-center justify-center px-2 py-2 rounded-lg w-[90px] min-w-[90px] max-w-[90px] transition-all duration-200 select-none shadow-sm border-2 bg-gray-900 border-gray-800 text-purple-200 text-center"
-                style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
-                title={lang.label}
-              >
-                <span className="mb-1">{lang.icon}</span>
-                <span className="font-bold tracking-wide uppercase">{lang.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* File Tabs (horizontal, VS Code style) */}
-        <div className="flex items-center gap-1 px-2 py-1 bg-gray-900 border-b border-gray-800 overflow-x-auto scrollbar-thin scrollbar-thumb-purple-900 scrollbar-track-transparent transition-all duration-300">
-          {files.map(file => {
-            const langObj = languageOptions.find(l => l.value === file.language);
-            return (
-              <div key={file.id} className={`flex items-center px-3 py-1 rounded-t border-b-2 cursor-pointer whitespace-nowrap font-mono text-sm transition-all duration-200 ${file.id === activeFileId ? 'bg-gray-800 border-purple-500 text-purple-200 font-bold scale-105 shadow-lg' : 'bg-gray-900 border-transparent text-gray-300 hover:bg-gray-800'}`} onClick={() => setActiveFileId(file.id)}>
-                {getFileIcon(file)}
-                <span className="mr-1 truncate max-w-[100px]">{file.name}</span>
-                {files.length > 1 && (
-                  <button onClick={e => { e.stopPropagation(); handleDeleteFile(file.id); }} className="ml-1 text-xs text-gray-400 hover:text-red-500"><X size={14} /></button>
-                )}
-              </div>
-            );
-          })}
-            </div>
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col md:flex-row justify-center items-start gap-4 md:gap-8 px-2 md:px-8 py-3 md:py-6 max-w-[1600px] w-full mx-auto transition-all duration-300">
-          <section className="flex flex-col gap-2 w-full md:w-[40%] min-w-[0] max-w-full md:max-w-[500px] h-full">
-            {/* Active File Editor */}
-            <div className="rounded-2xl shadow-2xl bg-gray-900 border border-gray-800 hover:shadow-purple-900/60 transition-shadow duration-300 group flex-1 min-h-[180px] md:min-h-[220px] max-h-[60vh] md:max-h-none overflow-auto">
-              <div className="rounded-t-2xl px-4 py-2 bg-gradient-to-r from-purple-900 to-purple-700 text-white font-semibold text-sm tracking-wide border-b border-purple-800/40 shadow group-hover:shadow-md">{activeFile.name}</div>
-              <div className="p-2 min-h-[180px] md:min-h-[220px] h-full">
-                <CodeEditor ref={codeEditorRef} language={activeFile.language} value={activeFile.code} onChange={handleCodeChange} />
-              </div>
-            </div>
-          </section>
-          {/* Output Panel */}
-          <section className="flex-1 min-w-[0] md:min-w-[320px] max-w-full md:max-w-[700px] h-full flex flex-col">
-            <div className="rounded-2xl shadow-2xl bg-gray-900 border border-purple-900/60 flex flex-col h-full relative overflow-hidden flex-1">
-              <div className="rounded-t-2xl px-4 py-2 bg-gradient-to-r from-purple-900 to-purple-700 text-white font-semibold text-sm tracking-wide border-b border-purple-800/40 shadow flex items-center justify-between">
-                <span>Output</span>
-                <button onClick={handleClearOutput} title="Clear Output" className="ml-2 px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs">Clear</button>
-              </div>
-              <div className="flex-1 p-2 md:p-4 overflow-auto min-h-[300px] md:min-h-[660px] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-t border-purple-900/40 transition-all duration-300">
-                {[
-                  'python', 'cpp', 'c', 'java', 'csharp', 'go', 'ruby', 'php', 'rust', 'swift', 'kotlin', 'bash', 'typescript'
-                ].includes(activeFile.language) ? (
-                  <div className={`w-full h-full min-h-[200px] md:min-h-[650px] bg-white border-none rounded-xl shadow-inner text-left ${outputType[activeFileId] === 'error' ? 'text-red-400' : outputType[activeFileId] === 'success' ? 'text-green-400' : 'text-gray-900'}`}
-                    style={{ fontFamily: 'Fira Mono, monospace', fontSize: 15 }}>
-                    <div dangerouslySetInnerHTML={{ __html: output[activeFileId] || '' }} />
-                  </div>
-                ) : (
-                <iframe
-                  title="Output"
-                  srcDoc={`<html><body style='background:#fff;color:#222;font-family:JetBrains Mono,monospace;padding:1.5rem;font-size:1.1rem;'>${output[activeFileId] || ''}</body></html>`}
-                  className="w-full h-full min-h-[200px] md:min-h-[650px] bg-white border-none rounded-xl shadow-inner"
-                  sandbox="allow-scripts allow-same-origin"
-                />
-                )}
-              </div>
-            </div>
-          </section>
-      </main>
-        {/* Status Bar */}
-      {/* Bottom Bar */}
-        <footer className="w-full flex flex-col md:flex-row justify-center items-center gap-2 md:gap-4 py-4 md:py-6 bg-transparent mt-2">
-        <button
-            className="flex items-center gap-2 px-7 py-2 rounded-xl bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-800 hover:to-purple-950 text-white font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-700 active:scale-95"
-            onClick={handleRunCode}
-            title="Run the code (Ctrl+Enter)"
-        >
-          <Play size={20} /> Run Code
-        </button>
-        <button
-            className="flex items-center gap-2 px-7 py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-700 active:scale-95"
-          onClick={clearCode}
-            title="Clear all code in all files"
-        >
-          <Trash2 size={20} /> Clear Code
-        </button>
-        <button
-            className="flex items-center gap-2 px-7 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-900 hover:from-blue-800 hover:to-blue-950 text-white font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-700 active:scale-95"
-          onClick={exportCode}
-            title="Export as HTML file"
-          >
-            <Download size={20} /> Export
-          </button>
-          <button
-            className="flex items-center gap-2 px-7 py-2 rounded-xl bg-gradient-to-r from-green-700 to-green-900 hover:from-green-800 hover:to-green-950 text-white font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-700 active:scale-95"
-            onClick={handleShare}
-            title="Share code via Hastebin (link copied to clipboard)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M18 12l-6-6m0 0l-6 6m6-6v12" /></svg>
-            Share
-          </button>
-        </footer>
-        {/* Toggle Terminal Button */}
-        <button
-          className="fixed bottom-6 right-6 z-50 px-4 py-2 rounded-full bg-gray-900 text-purple-200 shadow-lg hover:bg-gray-800 transition-all border border-purple-900"
-          onClick={() => setShowTerminal(t => !t)}
-          title="Toggle Node.js Terminal"
-        >
-          {showTerminal ? 'Hide Terminal' : 'Show Terminal'}
-        </button>
-        {/* Node.js Terminal Panel */}
-        {showTerminal && (
-          <div className="fixed bottom-0 left-0 w-full bg-gray-950 border-t border-purple-900 z-40 transition-all duration-300" style={{ height: '35vh', minHeight: 180, maxHeight: 320 }}>
-            <div ref={terminalRef} style={{ width: '100%', height: '100%' }} />
-          </div>
-        )}
+        
+        <CommandPaletteModal
+          showPalette={showPalette}
+          setShowPalette={setShowPalette}
+          paletteQuery={paletteQuery}
+          setPaletteQuery={setPaletteQuery}
+          filteredPalette={filteredPalette}
+        />
+        
+        <SnippetsModal
+          showSnippets={showSnippets}
+          setShowSnippets={setShowSnippets}
+          codeSnippets={codeSnippets}
+          userSnippets={userSnippets}
+          setUserSnippets={setUserSnippets}
+          snippetForm={snippetForm}
+          setSnippetForm={setSnippetForm}
+          handleInsertSnippet={handleInsertSnippet}
+          handleAddSnippet={handleAddSnippet}
+          handleEditSnippet={handleEditSnippet}
+          handleUpdateSnippet={handleUpdateSnippet}
+          handleDeleteSnippet={handleDeleteSnippet}
+          activeFile={activeFile}
+          languageOptions={languageOptions}
+        />
+        
+        <NewFileModal
+          showAddFile={showAddFile}
+          setShowAddFile={setShowAddFile}
+          newName={newName}
+          setNewName={setNewName}
+          newLang={newLang}
+          setNewLang={setNewLang}
+          handleCreateFile={handleCreateFile}
+          languageOptions={languageOptions}
+          files={files}
+        />
+        
+        <LanguageSupportModal
+          showLanguageSupport={showLanguageSupport}
+          setShowLanguageSupport={setShowLanguageSupport}
+          languageOptions={languageOptions}
+          runtimes={runtimes}
+          handleLanguageSelect={handleLanguageSelect}
+        />
       </div>
-      {/* Command Palette Modal */}
-      {showPalette && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-xl p-4 min-w-[320px] max-w-[90vw] max-h-[80vh] flex flex-col gap-2 border border-purple-200">
-            <input autoFocus value={paletteQuery} onChange={e => setPaletteQuery(e.target.value)} placeholder="Type a command..." className="p-2 rounded border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono text-sm" />
-            <div className="flex flex-col gap-1 overflow-auto max-h-60">
-              {filteredPalette.length === 0 && <div className="text-gray-400 text-xs p-2">No commands found.</div>}
-              {filteredPalette.map((a, i) => (
-                <button key={a.label} onClick={() => { a.action(); setShowPalette(false); setPaletteQuery(''); }} className="text-left px-3 py-2 rounded hover:bg-purple-100/60 text-sm font-mono transition-all duration-150" style={{ color: 'var(--accent-color)' }}>{a.label}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Code Snippets Modal */}
-      {showSnippets && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-gray-100 via-white to-purple-50/80 backdrop-blur-lg rounded-2xl shadow-2xl p-7 min-w-[320px] max-w-[95vw] flex flex-col gap-5 border border-purple-300 relative animate-fade-in">
-            <h2 className="text-2xl font-extrabold text-purple-700 mb-1 tracking-tight">Insert Code Snippet</h2>
-            <div className="flex flex-col gap-2 max-h-72 overflow-y-auto">
-              {/* Built-in snippets */}
-              {codeSnippets.filter(s => s.language === activeFile.language).length === 0 && userSnippets.filter(s => s.language === activeFile.language).length === 0 && (
-                <div className="text-gray-500 font-mono text-base">No snippets available for this language.</div>
-              )}
-              {codeSnippets.filter(s => s.language === activeFile.language).map(snippet => (
-                <button key={snippet.name} onClick={() => handleInsertSnippet(snippet.code)} className="text-left px-4 py-3 rounded-lg bg-white hover:bg-purple-100 border border-purple-200 font-mono text-base text-gray-800 shadow-sm transition-all duration-150">
-                  <span className="font-bold text-purple-700">{snippet.name}</span>
-                  <pre className="mt-1 text-xs text-gray-700 whitespace-pre-wrap">{snippet.code}</pre>
-                </button>
-              ))}
-              {/* User-defined snippets */}
-              {userSnippets.filter(s => s.language === activeFile.language).map((snippet, idx) => (
-                <div key={snippet.name + idx} className="flex flex-col gap-1 bg-white border border-purple-200 rounded-lg p-3 shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleInsertSnippet(snippet.code)} className="font-bold text-purple-700 hover:underline text-left flex-1">{snippet.name}</button>
-                    <button onClick={() => handleEditSnippet(idx)} className="text-xs text-blue-500 hover:underline">Edit</button>
-                    <button onClick={() => handleDeleteSnippet(idx)} className="text-xs text-red-500 hover:underline">Delete</button>
-                  </div>
-                  <pre className="mt-1 text-xs text-gray-700 whitespace-pre-wrap">{snippet.code}</pre>
-                </div>
-              ))}
-            </div>
-            {/* Add/Edit snippet form */}
-            <div className="mt-4 bg-purple-50 border border-purple-200 rounded-lg p-4 flex flex-col gap-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={snippetForm.name}
-                  onChange={e => setSnippetForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Snippet name"
-                  className="flex-1 px-2 py-1 rounded border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm font-mono"
-                />
-                <select
-                  value={snippetForm.language}
-                  onChange={e => setSnippetForm(f => ({ ...f, language: e.target.value }))}
-                  className="px-2 py-1 rounded border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm font-mono"
-                >
-                  {languageOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <textarea
-                value={snippetForm.code}
-                onChange={e => setSnippetForm(f => ({ ...f, code: e.target.value }))}
-                placeholder="Snippet code..."
-                className="w-full px-2 py-1 rounded border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm font-mono min-h-[60px]"
-              />
-              <div className="flex gap-2 justify-end">
-                {snippetForm.editIdx === null ? (
-                  <button onClick={handleAddSnippet} className="px-4 py-1 rounded bg-purple-600 text-white font-bold text-sm hover:bg-purple-700">Add</button>
-                ) : (
-                  <>
-                    <button onClick={handleUpdateSnippet} className="px-4 py-1 rounded bg-blue-600 text-white font-bold text-sm hover:bg-blue-700">Update</button>
-                    <button onClick={() => setSnippetForm({ name: '', language: activeFile.language, code: '', editIdx: null })} className="px-4 py-1 rounded bg-gray-300 text-gray-700 font-bold text-sm hover:bg-gray-400">Cancel</button>
-                  </>
-                )}
-              </div>
-            </div>
-            <button onClick={() => setShowSnippets(false)} className="absolute top-3 right-3 text-purple-400 hover:text-purple-700 text-xl font-bold p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white/70 shadow-sm" title="Close">×</button>
-          </div>
-        </div>
-      )}
-      {/* New File Modal */}
-      {showAddFile && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" onKeyDown={e => {
-          if (e.key === 'Escape') setShowAddFile(false);
-          if (e.key === 'Enter') handleCreateFile();
-        }}>
-          <div className="bg-gradient-to-br from-gray-100 via-white to-purple-50/80 backdrop-blur-lg rounded-2xl shadow-2xl p-7 min-w-[320px] max-w-[95vw] flex flex-col gap-5 border border-purple-300 relative animate-fade-in">
-            <h2 className="text-2xl font-extrabold text-purple-700 mb-1 tracking-tight">Create New File</h2>
-            <label className="flex flex-col gap-1 font-mono text-base text-gray-800">
-              File Name
-              <input
-                type="text"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder="e.g. myfile.js"
-                className="p-3 rounded-lg border-2 border-purple-200 focus:border-[var(--accent-color)] focus:ring-2 focus:ring-[var(--accent-color)] bg-white text-gray-900 font-mono text-base transition-all outline-none shadow-sm"
-                autoFocus
-                spellCheck={false}
-                maxLength={40}
-              />
-            </label>
-            <label className="flex flex-col gap-1 font-mono text-base text-gray-800">
-              Language
-              <select
-                value={newLang}
-                onChange={e => setNewLang(e.target.value)}
-                className="p-3 rounded-lg border-2 border-purple-200 focus:border-[var(--accent-color)] focus:ring-2 focus:ring-[var(--accent-color)] bg-white text-gray-900 font-mono text-base transition-all outline-none shadow-sm cursor-pointer"
-              >
-                {languageOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </label>
-            {/* Error message for empty or duplicate file name */}
-            {(!newName.trim() || files.some(f => f.name === newName.trim())) && (
-              <div className="text-red-500 font-mono text-sm -mt-3">
-                { !newName.trim() ? 'File name cannot be empty.' : 'A file with this name already exists.' }
-              </div>
-            )}
-            <div className="flex gap-4 mt-2 justify-end">
-              <button
-                onClick={() => setShowAddFile(false)}
-                className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold shadow-sm transition-all border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateFile}
-                className="px-5 py-2 rounded-lg bg-[var(--accent-color)] hover:bg-purple-700 text-white font-bold shadow-md transition-all border border-purple-400 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!newName.trim() || files.some(f => f.name === newName.trim())}
-                type="button"
-              >
-                Create
-              </button>
-            </div>
-            <button onClick={() => setShowAddFile(false)} className="absolute top-3 right-3 text-purple-400 hover:text-purple-700 text-xl font-bold p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white/70 shadow-sm" title="Close">×</button>
-          </div>
-        </div>
-      )}
-    </div>
+    </ErrorBoundary>
   );
-}; 
+};
 
-/* Add slow spin animation for logo */
+{/* Add slow spin animation for logo */}
 <style>{`
 @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 .animate-spin-slow { animation: spin-slow 6s linear infinite; }
-`}</style> 
+`}</style>

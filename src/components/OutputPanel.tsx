@@ -1,97 +1,53 @@
-import React, { useState } from 'react';
-import { useCodeContext } from '../context/CodeContext';
-import '../styles/OutputPanel.css';
+import React from 'react';
 
-const OutputPanel: React.FC = () => {
-  const { code, iframeKey } = useCodeContext();
-  const { html, css, javascript } = code;
-  const [status, setStatus] = useState<'live' | 'refreshed'>('live');
-  const [refreshKey, setRefreshKey] = useState(0);
+interface OutputPanelProps {
+  activeFile: { id: number; name: string; language: string; code: string };
+  activeFileId: number;
+  output: { [id: number]: string };
+  outputType: { [id: number]: 'success' | 'error' | 'info' };
+  handleClearOutput: () => void;
+}
 
-  const sanitizeJavascript = (js: string) => {
-    let sanitized = js;
-    if (js.includes('alert')) {
-      sanitized = sanitized.replace(/alert\(/g, "console.log('[Alerted Output] '+");
-    }
-    if (js.includes('console.log')) {
-      sanitized = sanitized.replace(/console.log\(/g, "console.log('[Console Output] '+");
-    }
-    return sanitized;
-  };
-
-  const getOutputContent = () => {
-    const jsCode = sanitizeJavascript(javascript);
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>SNIPPAD Output</title>
-          <style>${css}</style>
-        </head>
-        <body>
-          ${html}
-          <script>${jsCode}</script>
-        </body>
-      </html>
-    `;
-  };
-
-  const handleRefresh = () => {
-    setRefreshKey(k => k + 1);
-    setStatus('refreshed');
-    setTimeout(() => setStatus('live'), 1000);
-  };
-
-  const handlePopout = () => {
-    const win = window.open();
-    if (win) {
-      win.document.write(getOutputContent());
-      win.document.close();
-    }
-  };
+export const OutputPanel: React.FC<OutputPanelProps> = ({
+  activeFile,
+  activeFileId,
+  output,
+  outputType,
+  handleClearOutput,
+}) => {
+  const isConsoleLang = [
+    'python', 'cpp', 'c', 'java', 'csharp', 'go', 'ruby', 'php', 'rust', 'swift', 'kotlin', 'bash', 'typescript'
+  ].includes(activeFile.language);
 
   return (
-    <div className="output-panel enhanced-output-panel">
-      {/* Toolbar/Header */}
-      <div className="output-toolbar">
-        <span className="output-title" aria-label="Output Panel">Output</span>
-        <div className="output-toolbar-actions">
-          <button
-            className="output-btn"
-            onClick={handleRefresh}
-            title="Refresh Output"
-            aria-label="Refresh Output"
-          >
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0114.13-3.36L23 10M1 14l5.36 5.36A9 9 0 0020.49 15"></path></svg>
-          </button>
-          <button
-            className="output-btn"
-            onClick={handlePopout}
-            title="Open Output in New Tab"
-            aria-label="Open Output in New Tab"
-          >
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </button>
+    <section className="flex-1 min-w-[0] md:min-w-[350px] max-w-full md:max-w-[800px] h-full flex flex-col">
+      <div className="rounded-2xl shadow-2xl bg-gradient-to-br from-[#0d1117] via-[#161b22] to-[#0d1117] border border-[#30363d]/50 flex flex-col h-full relative overflow-hidden flex-1">
+        <div className="rounded-t-2xl px-6 py-4 bg-gradient-to-r from-[#161b22] to-[#21262d] text-[#c9d1d9] font-bold text-sm tracking-wide border-b border-[#30363d]/50 shadow-lg flex items-center justify-between">
+          <span className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-[#238636] animate-pulse"></span>
+              <span className="font-extrabold">OUTPUT</span>
+            </div>
+            <span className="px-2 py-1 rounded-full bg-[#21262d] border border-[#30363d]/50 text-xs text-[#7d8590] font-mono">CONSOLE</span>
+          </span>
+          <button onClick={handleClearOutput} title="Clear Output" className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#21262d] to-[#30363d] hover:from-[#30363d] hover:to-[#484f58] text-[#7d8590] text-xs transition-all duration-300 font-bold hover:scale-105 active:scale-95">🗑️ Clear</button>
+        </div>
+        <div className="flex-1 p-6 overflow-auto min-h-[300px] md:min-h-[700px] bg-[#0d1117] border-t border-[#30363d]/50 transition-all duration-300">
+          {isConsoleLang ? (
+            <div className={`w-full h-full min-h-[200px] md:min-h-[650px] bg-[#0d1117] border border-[#30363d] rounded-md shadow-inner text-left ${outputType[activeFileId] === 'error' ? 'text-[#f85149]' : outputType[activeFileId] === 'success' ? 'text-[#238636]' : 'text-[#c9d1d9]'}`}
+              style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14 }}>
+              <div dangerouslySetInnerHTML={{ __html: output[activeFileId] || '' }} />
+            </div>
+          ) : (
+            <iframe
+              title="Output"
+              srcDoc={`<html><body style='background:#0d1117;color:#c9d1d9;font-family:JetBrains Mono,monospace;padding:1.5rem;font-size:1.1rem;'>${output[activeFileId] || ''}</body></html>`}
+              className="w-full h-full min-h-[200px] md:min-h-[650px] bg-[#0d1117] border border-[#30363d] rounded-md shadow-inner"
+              sandbox="allow-scripts allow-same-origin"
+            />
+          )}
         </div>
       </div>
-      {/* Output Area */}
-      <div className="output-iframe-wrapper">
-        <iframe
-          key={iframeKey + '-' + refreshKey}
-          className="output-iframe"
-          title="Code Output"
-          srcDoc={getOutputContent()}
-          sandbox="allow-scripts allow-modals"
-        />
-      </div>
-      {/* Status Bar */}
-      <div className="output-status-bar">
-        <span className={status === 'live' ? 'status-live' : 'status-refreshed'}>
-          {status === 'live' ? '● Live' : '● Refreshed'}
-        </span>
-      </div>
-    </div>
+    </section>
   );
 };
-
-export default OutputPanel;
