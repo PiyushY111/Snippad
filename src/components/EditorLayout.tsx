@@ -30,7 +30,7 @@ const languageOptions = [
 const defaultFiles = [
   { id: 1, name: 'index.html', language: 'html', code: `<h1>Hello!</h1>\n<p>Write HTML, CSS or JavaScript code here and click 'Run Code'.</p>` },
   { id: 2, name: 'style.css', language: 'css', code: '/* CSS goes here */' },
-  { id: 3, name: 'script.js', language: 'javascript', code: '// JS code here' },
+  { id: 3, name: 'script.js', language: 'javascript', code: 'console.log("Hello from Node.js!");\nconsole.log("Current time:", new Date().toLocaleString());\n\n// Simple calculation\na = 5;\nb = 3;\nconsole.log(`${a} + ${b} = ${a + b}`);\n\n// Array example\nconst fruits = ["apple", "banana", "orange"];\nconsole.log("Fruits:", fruits);\nconsole.log("First fruit:", fruits[0]);' },
 ];
 
 export const EditorLayout = () => {
@@ -254,6 +254,9 @@ export const EditorLayout = () => {
   const [showTerminal, setShowTerminal] = useState(false);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<any>(null);
+  
+
+
   useEffect(() => {
     if (showTerminal && terminalRef.current && !xtermRef.current) {
       const term = new Terminal({
@@ -262,33 +265,144 @@ export const EditorLayout = () => {
         theme: { background: '#1a1a1a', foreground: '#fafafa' },
         cursorBlink: true,
         rows: 12,
+        scrollback: 1000,
       });
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
       term.open(terminalRef.current);
       fitAddon.fit();
-      term.writeln('Welcome to the (demo) terminal!');
-      let inputLength = 0;
-      const prompt = () => {
-        term.write('\r\n$ ');
-        inputLength = 0;
+      term.writeln('\x1b[36mNode.js Terminal\x1b[0m');
+      term.writeln('\x1b[90mType "node filename.js" to run JavaScript files, or "help" for commands.\x1b[0m');
+      term.writeln('');
+      
+      let currentLine = '';
+      let cursorPosition = 0;
+      
+      const writePrompt = () => {
+        term.write('\r\n\x1b[32m$\x1b[0m ');
+        currentLine = '';
+        cursorPosition = 0;
       };
-      prompt();
+      
+      const executeCommand = async (command: string) => {
+        const args = command.trim().split(' ');
+        const cmd = args[0];
+        
+        if (cmd === 'help') {
+          term.writeln('\x1b[33mAvailable commands:\x1b[0m');
+          term.writeln('  node <filename>  - Run a JavaScript file');
+          term.writeln('  ls              - List files in editor');
+          term.writeln('  clear           - Clear terminal');
+          term.writeln('  help            - Show this help');
+          term.writeln('');
+        } else if (cmd === 'clear') {
+          term.clear();
+          term.writeln('\x1b[36mNode.js Terminal\x1b[0m');
+          term.writeln('\x1b[90mType "node filename.js" to run JavaScript files, or "help" for commands.\x1b[0m');
+          term.writeln('');
+        } else if (cmd === 'ls') {
+          term.writeln('\x1b[33mFiles in editor:\x1b[0m');
+          files.forEach(file => {
+            const icon = file.id === activeFileId ? '\x1b[32m▶\x1b[0m' : ' ';
+            term.writeln(`  ${icon} ${file.name} (${file.language})`);
+          });
+          term.writeln('');
+        } else if (cmd === 'node' && args[1]) {
+          const filename = args[1];
+          const file = files.find(f => f.name === filename);
+          
+          if (!file) {
+            term.writeln(`\x1b[31mError: File "${filename}" not found.\x1b[0m`);
+            term.writeln('');
+            return;
+          }
+          
+          if (file.language !== 'javascript') {
+            term.writeln(`\x1b[31mError: "${filename}" is not a JavaScript file.\x1b[0m`);
+            term.writeln('');
+            return;
+          }
+          
+          term.writeln(`\x1b[36mRunning ${filename}...\x1b[0m`);
+          
+          try {
+            // Use Piston API to run JavaScript
+            const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                language: 'javascript',
+                version: '18.15.0',
+                files: [{ content: file.code }],
+              }),
+            });
+            
+            const data = await response.json();
+            
+            if (data.run && data.run.stderr) {
+              term.writeln(`\x1b[31mError:\x1b[0m`);
+              term.writeln(data.run.stderr);
+            }
+            
+            if (data.run && data.run.stdout) {
+              term.writeln(`\x1b[32mOutput:\x1b[0m`);
+              term.writeln(data.run.stdout);
+            }
+            
+            if (!data.run.stdout && !data.run.stderr) {
+              term.writeln('\x1b[90m(No output)\x1b[0m');
+            }
+            
+          } catch (err) {
+            term.writeln(`\x1b[31mError: ${err instanceof Error ? err.message : String(err)}\x1b[0m`);
+          }
+          
+          term.writeln('');
+        } else if (cmd) {
+          term.writeln(`\x1b[31mCommand not found: ${cmd}\x1b[0m`);
+          term.writeln('Type "help" for available commands.');
+          term.writeln('');
+        }
+      };
+      
+      writePrompt();
+      
       term.onKey(e => {
         const ev = e.domEvent;
-        const printable = !ev.altKey && !ev.ctrlKey && !ev.metaKey;
+        
         if (ev.key === 'Enter') {
-          prompt();
+          term.writeln('');
+          executeCommand(currentLine);
+          writePrompt();
         } else if (ev.key === 'Backspace') {
-          if (inputLength > 0) {
+          if (cursorPosition > 0) {
+            currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
+            cursorPosition--;
             term.write('\b \b');
-            inputLength--;
           }
-        } else if (printable) {
-          term.write(e.key);
-          inputLength++;
+        } else if (ev.key === 'ArrowLeft') {
+          if (cursorPosition > 0) {
+            cursorPosition--;
+            term.write('\x1b[D');
+          }
+        } else if (ev.key === 'ArrowRight') {
+          if (cursorPosition < currentLine.length) {
+            cursorPosition++;
+            term.write('\x1b[C');
+          }
+        } else if (ev.key === 'Home') {
+          term.write('\x1b[' + cursorPosition + 'D');
+          cursorPosition = 0;
+        } else if (ev.key === 'End') {
+          term.write('\x1b[' + (currentLine.length - cursorPosition) + 'C');
+          cursorPosition = currentLine.length;
+        } else if (ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey) {
+          currentLine = currentLine.slice(0, cursorPosition) + ev.key + currentLine.slice(cursorPosition);
+          cursorPosition++;
+          term.write(ev.key);
         }
       });
+      
       xtermRef.current = term;
     }
     return () => {
@@ -297,7 +411,7 @@ export const EditorLayout = () => {
         xtermRef.current = null;
       }
     };
-  }, [showTerminal]);
+  }, [showTerminal, files, activeFileId]);
 
   // Status bar state
   const [status, setStatus] = useState('Ready');
@@ -394,7 +508,7 @@ export const EditorLayout = () => {
     { label: 'Format Code', action: () => document.querySelector('[title="Format Code"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })) },
     { label: 'New File', action: handleAddFile },
     { label: 'Open Snippets', action: () => setShowSnippets(true) },
-    { label: 'Toggle Terminal', action: () => setShowTerminal(t => !t) },
+    { label: 'Toggle Node.js Terminal', action: () => setShowTerminal(t => !t) },
     { label: 'Share Code', action: handleShare },
     { label: 'Export Code', action: exportCode },
     { label: 'Clear Code', action: clearCode },
@@ -784,11 +898,11 @@ export const EditorLayout = () => {
         <button
           className="fixed bottom-6 right-6 z-50 px-4 py-2 rounded-full bg-gray-900 text-purple-200 shadow-lg hover:bg-gray-800 transition-all border border-purple-900"
           onClick={() => setShowTerminal(t => !t)}
-          title="Toggle Integrated Terminal"
+          title="Toggle Node.js Terminal"
         >
           {showTerminal ? 'Hide Terminal' : 'Show Terminal'}
         </button>
-        {/* Integrated Terminal Panel */}
+        {/* Node.js Terminal Panel */}
         {showTerminal && (
           <div className="fixed bottom-0 left-0 w-full bg-gray-950 border-t border-purple-900 z-40 transition-all duration-300" style={{ height: '35vh', minHeight: 180, maxHeight: 320 }}>
             <div ref={terminalRef} style={{ width: '100%', height: '100%' }} />
