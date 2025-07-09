@@ -723,7 +723,7 @@ export const EditorLayout = () => {
           
           {/* Bottom Bar */}
           <footer className="footer-bar w-full flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6 py-6 md:py-8 bg-[#181a20] border-t-2 border-[#BCDD19] mt-4 relative shadow-[0_2px_10px_0_#BCDD1933]">
-            <div className="footer-btn-boundary border-2 border-[#BCDD19] rounded-2xl p-1 flex items-center justify-center">
+            <div className="flex gap-4 border-2 border-[#BCDD19] rounded-2xl p-2 bg-[#181a20]">
               <button
                 className="output-btn run-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
                 onClick={handleRunCode}
@@ -731,8 +731,6 @@ export const EditorLayout = () => {
               >
                 <Play size={20} />  Run Code
               </button>
-            </div>
-            <div className="footer-btn-boundary border-2 border-[#BCDD19] rounded-2xl p-1 flex items-center justify-center">
               <button
                 className="output-btn clear-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
                 onClick={clearCode}
@@ -740,8 +738,6 @@ export const EditorLayout = () => {
               >
                 <Trash2 size={20} />  Clear Code
               </button>
-            </div>
-            <div className="footer-btn-boundary border-2 border-[#BCDD19] rounded-2xl p-1 flex items-center justify-center">
               <button
                 className="output-btn export-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
                 onClick={exportCode}
