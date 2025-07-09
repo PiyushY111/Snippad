@@ -38,7 +38,7 @@ const languageOptions: LanguageOption[] = [
 ];
 
 const defaultFiles: File[] = [
-  { id: 1, name: 'index.html', language: 'html', code: `<h1>Hello!</h1>\n<p>Write HTML, CSS or JavaScript code here and click 'Run Code'.</p>` },
+  { id: 1, name: 'index.html', language: 'html', code: `<h1>Hello!</h1>\n<p>Write HTML, CSS, JavaScript and  more languages code here and click 'Run Code'.</p>` },
   { id: 2, name: 'style.css', language: 'css', code: '/* CSS goes here */' },
   { id: 3, name: 'script.js', language: 'javascript', code: 'console.log("Hello from Node.js!");\nconsole.log("Current time:", new Date().toLocaleString());\n\n// Simple calculation\na = 5;\nb = 3;\nconsole.log(`${a} + ${b} = ${a + b}`);\n\n// Array example\nconst fruits = ["apple", "banana", "orange"];\nconsole.log("Fruits:", fruits);\nconsole.log("First fruit:", fruits[0]);' },
 ];
