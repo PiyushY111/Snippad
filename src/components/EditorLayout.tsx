@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { CodeEditor } from './CodeEditor';
-import { Play, Trash2, Download, Code2, Plus, X, Edit2, FileText, FileCode2, FileJson, FileType, FileTerminal, User, Settings } from 'lucide-react';
+import { Play, Trash2, Download, Code2, Plus, X, Edit2, FileText, FileCode2, FileJson, FileType, User, Settings } from 'lucide-react';
 import axios from 'axios';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import 'xterm/css/xterm.css';
 import { Sidebar } from './Sidebar';
 import { FileTabs } from './FileTabs';
 import { OutputPanel } from './OutputPanel';
-import { TerminalPanel } from './TerminalPanel';
 import { SnippetsModal } from './modals/SnippetsModal';
 import { NewFileModal } from './modals/NewFileModal';
 import { LanguageSupportModal } from './modals/LanguageSupportModal';
 import { CommandPaletteModal } from './modals/CommandPaletteModal';
+import { SettingsModal } from './modals/SettingsModal';
 import type { File, Snippet, Runtime, LanguageOption } from '../types';
 import toast, { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -20,18 +17,18 @@ import { ErrorBoundary } from './ErrorBoundary';
 const languageOptions: LanguageOption[] = [
   { label: 'JavaScript', value: 'javascript', ext: 'js', icon: <FileCode2 size={16} /> },
   { label: 'TypeScript', value: 'typescript', ext: 'ts', icon: <FileCode2 size={16} /> },
-  { label: 'Python', value: 'python', ext: 'py', icon: <FileTerminal size={16} /> },
-  { label: 'C++', value: 'cpp', ext: 'cpp', icon: <FileTerminal size={16} /> },
-  { label: 'C', value: 'c', ext: 'c', icon: <FileTerminal size={16} /> },
-  { label: 'Java', value: 'java', ext: 'java', icon: <FileTerminal size={16} /> },
-  { label: 'C#', value: 'csharp', ext: 'cs', icon: <FileTerminal size={16} /> },
-  { label: 'Go', value: 'go', ext: 'go', icon: <FileTerminal size={16} /> },
-  { label: 'Ruby', value: 'ruby', ext: 'rb', icon: <FileTerminal size={16} /> },
-  { label: 'PHP', value: 'php', ext: 'php', icon: <FileTerminal size={16} /> },
-  { label: 'Rust', value: 'rust', ext: 'rs', icon: <FileTerminal size={16} /> },
-  { label: 'Swift', value: 'swift', ext: 'swift', icon: <FileTerminal size={16} /> },
-  { label: 'Kotlin', value: 'kotlin', ext: 'kt', icon: <FileTerminal size={16} /> },
-  { label: 'Bash', value: 'bash', ext: 'sh', icon: <FileTerminal size={16} /> },
+  { label: 'Python', value: 'python', ext: 'py', icon: <FileType size={16} /> },
+  { label: 'C++', value: 'cpp', ext: 'cpp', icon: <FileType size={16} /> },
+  { label: 'C', value: 'c', ext: 'c', icon: <FileType size={16} /> },
+  { label: 'Java', value: 'java', ext: 'java', icon: <FileType size={16} /> },
+  { label: 'C#', value: 'csharp', ext: 'cs', icon: <FileType size={16} /> },
+  { label: 'Go', value: 'go', ext: 'go', icon: <FileType size={16} /> },
+  { label: 'Ruby', value: 'ruby', ext: 'rb', icon: <FileType size={16} /> },
+  { label: 'PHP', value: 'php', ext: 'php', icon: <FileType size={16} /> },
+  { label: 'Rust', value: 'rust', ext: 'rs', icon: <FileType size={16} /> },
+  { label: 'Swift', value: 'swift', ext: 'swift', icon: <FileType size={16} /> },
+  { label: 'Kotlin', value: 'kotlin', ext: 'kt', icon: <FileType size={16} /> },
+  { label: 'Bash', value: 'bash', ext: 'sh', icon: <FileType size={16} /> },
   { label: 'HTML', value: 'html', ext: 'html', icon: <FileText size={16} /> },
   { label: 'CSS', value: 'css', ext: 'css', icon: <FileText size={16} /> },
   { label: 'JSON', value: 'json', ext: 'json', icon: <FileJson size={16} /> },
@@ -50,13 +47,42 @@ const getFileIcon = (file: File) => {
     case 'ts': return <FileCode2 size={16} className="text-blue-400" />;
     case 'html': return <FileCode2 size={16} className="text-orange-400" />;
     case 'css': return <FileCode2 size={16} className="text-sky-400" />;
-    case 'py': return <FileTerminal size={16} className="text-yellow-300" />;
-    case 'sh': return <FileTerminal size={16} className="text-green-400" />;
+    case 'py': return <FileType size={16} className="text-yellow-300" />;
+    case 'sh': return <FileType size={16} className="text-green-400" />;
     case 'json': return <FileJson size={16} className="text-lime-400" />;
     case 'cpp': return <FileCode2 size={16} className="text-blue-300" />;
     default: return <FileType size={16} className="text-gray-400" />;
   }
 };
+
+// Add a simple LintErrorPanel component
+interface LintMessage {
+  message: string;
+  severity: number;
+  line?: number;
+  column?: number;
+}
+function LintErrorPanel({ lintMessages }: { lintMessages: LintMessage[] }) {
+  if (!lintMessages || lintMessages.length === 0) return null;
+  return (
+    <div className="mt-2 p-2 rounded bg-[#2d2d2d] border border-[#f85149]/40 text-sm text-[#f85149] font-mono max-h-40 overflow-auto">
+      <div className="font-bold text-[#f85149] mb-1">Lint Errors/Warnings:</div>
+      <ul>
+        {lintMessages.map((msg: LintMessage, i: number) => (
+          <li key={i} className="mb-1">
+            <span className={msg.severity === 2 ? 'font-bold' : 'text-yellow-400'}>
+              [{msg.severity === 2 ? 'Error' : 'Warning'}]
+            </span>{' '}
+            {msg.message}
+            {msg.line && (
+              <span className="ml-2 text-xs text-[#7d8590]">(Line {msg.line}, Col {msg.column})</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export const EditorLayout = () => {
   const [runtimes, setRuntimes] = useState<Runtime[]>([]);
@@ -275,169 +301,6 @@ export const EditorLayout = () => {
     setDragActive(false);
   };
 
-  // Integrated Terminal
-  const [showTerminal, setShowTerminal] = useState<boolean>(false);
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const xtermRef = useRef<any>(null);
-  
-
-
-  useEffect(() => {
-    if (showTerminal && terminalRef.current && !xtermRef.current) {
-      const term = new Terminal({
-        fontFamily: 'Fira Mono, monospace',
-        fontSize: 14,
-        theme: { background: '#1a1a1a', foreground: '#fafafa' },
-        cursorBlink: true,
-        rows: 12,
-        scrollback: 1000,
-      });
-      const fitAddon = new FitAddon();
-      term.loadAddon(fitAddon);
-      term.open(terminalRef.current);
-      fitAddon.fit();
-      term.writeln('\x1b[36mNode.js Terminal\x1b[0m');
-      term.writeln('\x1b[90mType "node filename.js" to run JavaScript files, or "help" for commands.\x1b[0m');
-      term.writeln('');
-      
-      let currentLine = '';
-      let cursorPosition = 0;
-      
-      const writePrompt = () => {
-        term.write('\r\n\x1b[32m$\x1b[0m ');
-        currentLine = '';
-        cursorPosition = 0;
-      };
-      
-      const executeCommand = async (command: string) => {
-        const args = command.trim().split(' ');
-        const cmd = args[0];
-        
-        if (cmd === 'help') {
-          term.writeln('\x1b[33mAvailable commands:\x1b[0m');
-          term.writeln('  node <filename>  - Run a JavaScript file');
-          term.writeln('  ls              - List files in editor');
-          term.writeln('  clear           - Clear terminal');
-          term.writeln('  help            - Show this help');
-          term.writeln('');
-        } else if (cmd === 'clear') {
-          term.clear();
-          term.writeln('\x1b[36mNode.js Terminal\x1b[0m');
-          term.writeln('\x1b[90mType "node filename.js" to run JavaScript files, or "help" for commands.\x1b[0m');
-          term.writeln('');
-        } else if (cmd === 'ls') {
-          term.writeln('\x1b[33mFiles in editor:\x1b[0m');
-          files.forEach(file => {
-            const icon = file.id === activeFileId ? '\x1b[32m▶\x1b[0m' : ' ';
-            term.writeln(`  ${icon} ${file.name} (${file.language})`);
-          });
-          term.writeln('');
-        } else if (cmd === 'node' && args[1]) {
-          const filename = args[1];
-          const file = files.find(f => f.name === filename);
-          
-          if (!file) {
-            term.writeln(`\x1b[31mError: File "${filename}" not found.\x1b[0m`);
-            term.writeln('');
-            return;
-          }
-          
-          if (file.language !== 'javascript') {
-            term.writeln(`\x1b[31mError: "${filename}" is not a JavaScript file.\x1b[0m`);
-            term.writeln('');
-            return;
-          }
-          
-          term.writeln(`\x1b[36mRunning ${filename}...\x1b[0m`);
-          
-          try {
-            // Use Piston API to run JavaScript
-            const response = await fetch('https://emkc.org/api/v2/piston/execute', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                language: 'javascript',
-                version: '18.15.0',
-                files: [{ content: file.code }],
-              }),
-            });
-            
-            const data = await response.json();
-            
-            if (data.run && data.run.stderr) {
-              term.writeln(`\x1b[31mError:\x1b[0m`);
-              term.writeln(data.run.stderr);
-            }
-            
-            if (data.run && data.run.stdout) {
-              term.writeln(`\x1b[32mOutput:\x1b[0m`);
-              term.writeln(data.run.stdout);
-            }
-            
-            if (!data.run.stdout && !data.run.stderr) {
-              term.writeln('\x1b[90m(No output)\x1b[0m');
-            }
-            
-          } catch (err) {
-            term.writeln(`\x1b[31mError: ${err instanceof Error ? err.message : String(err)}\x1b[0m`);
-          }
-          
-          term.writeln('');
-        } else if (cmd) {
-          term.writeln(`\x1b[31mCommand not found: ${cmd}\x1b[0m`);
-          term.writeln('Type "help" for available commands.');
-          term.writeln('');
-        }
-      };
-      
-      writePrompt();
-      
-      term.onKey(e => {
-        const ev = e.domEvent;
-        
-        if (ev.key === 'Enter') {
-          term.writeln('');
-          executeCommand(currentLine);
-          writePrompt();
-        } else if (ev.key === 'Backspace') {
-          if (cursorPosition > 0) {
-            currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
-            cursorPosition--;
-            term.write('\b \b');
-          }
-        } else if (ev.key === 'ArrowLeft') {
-          if (cursorPosition > 0) {
-            cursorPosition--;
-            term.write('\x1b[D');
-          }
-        } else if (ev.key === 'ArrowRight') {
-          if (cursorPosition < currentLine.length) {
-            cursorPosition++;
-            term.write('\x1b[C');
-          }
-        } else if (ev.key === 'Home') {
-          term.write('\x1b[' + cursorPosition + 'D');
-          cursorPosition = 0;
-        } else if (ev.key === 'End') {
-          term.write('\x1b[' + (currentLine.length - cursorPosition) + 'C');
-          cursorPosition = currentLine.length;
-        } else if (ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey) {
-          currentLine = currentLine.slice(0, cursorPosition) + ev.key + currentLine.slice(cursorPosition);
-          cursorPosition++;
-          term.write(ev.key);
-        }
-      });
-      
-      xtermRef.current = term;
-    }
-    return () => {
-      if (xtermRef.current) {
-        xtermRef.current.dispose();
-        xtermRef.current = null;
-      }
-    };
-  }, [showTerminal, files, activeFileId]);
-
   // Status bar state
   const [status, setStatus] = useState<string>('Ready');
   const [cursor, setCursor] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
@@ -533,7 +396,6 @@ export const EditorLayout = () => {
     { label: 'Format Code', action: () => document.querySelector('[title="Format Code"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })) },
     { label: 'New File', action: handleAddFile },
     { label: 'Open Snippets', action: () => setShowSnippets(true) },
-    { label: 'Toggle Node.js Terminal', action: () => setShowTerminal(t => !t) },
     { label: 'Share Code', action: handleShare },
     { label: 'Export Code', action: exportCode },
     { label: 'Clear Code', action: clearCode },
@@ -717,8 +579,8 @@ export const EditorLayout = () => {
       case 'ts': return <FileCode2 size={16} className="text-blue-400" />;
       case 'html': return <FileCode2 size={16} className="text-orange-400" />;
       case 'css': return <FileCode2 size={16} className="text-sky-400" />;
-      case 'py': return <FileTerminal size={16} className="text-yellow-300" />;
-      case 'sh': return <FileTerminal size={16} className="text-green-400" />;
+      case 'py': return <FileType size={16} className="text-yellow-300" />;
+      case 'sh': return <FileType size={16} className="text-green-400" />;
       case 'json': return <FileJson size={16} className="text-lime-400" />;
       case 'cpp': return <FileCode2 size={16} className="text-blue-300" />;
       default: return <FileType size={16} className="text-gray-400" />;
@@ -738,6 +600,21 @@ export const EditorLayout = () => {
   const memoizedSetShowSnippets = useCallback(setShowSnippets, []);
   const memoizedSetShowLanguageSupport = useCallback(setShowLanguageSupport, []);
   const memoizedReorderFiles = useCallback(reorderFiles, [files]);
+
+  // Editor settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [editorSettings, setEditorSettings] = useState(() => {
+    const saved = localStorage.getItem('editor-settings');
+    return saved ? JSON.parse(saved) : {
+      fontSize: 16,
+      tabSize: 2,
+      lineNumbers: true,
+      minimap: true,
+    };
+  });
+  useEffect(() => {
+    localStorage.setItem('editor-settings', JSON.stringify(editorSettings));
+  }, [editorSettings]);
 
   return (
     <ErrorBoundary>
@@ -769,31 +646,28 @@ export const EditorLayout = () => {
           getFileIcon={getFileIcon}
           showSidebar={showSidebar}
           reorderFiles={memoizedReorderFiles}
+          setShowSettings={setShowSettings}
         />
         
         {/* Main Area */}
         <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${showSidebar ? 'ml-64' : 'ml-16'}`}>
           {/* Header */}
-          <header className="w-full py-4 flex flex-row items-center justify-between bg-gradient-to-r from-[#0d1117] via-[#161b22] to-[#0d1117] border-b border-[#30363d]/50 px-6 relative overflow-hidden">
-            {/* Animated background effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#58a6ff]/5 to-transparent animate-pulse"></div>
-            
-            <div className="flex items-center space-x-4 relative z-10">
+          <header className="header-bar w-full flex flex-row items-center justify-between bg-[#181a20] border-b-2 border-[#BCDD19] rounded-2xl mt-4 mb-2 px-6 py-4 shadow-[0_2px_10px_0_#BCDD1933]">
+            <div className="flex items-center space-x-4">
               <div className="relative">
-                <span className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-[#58a6ff] via-[#1f6feb] to-[#a371f7] shadow-2xl animate-spin-slow text-white font-bold" style={{ animationPlayState: showEgg ? 'running' : 'paused' }}>⚡</span>
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#58a6ff]/20 to-[#a371f7]/20 blur-lg animate-pulse"></div>
+                <span className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#181a20] border-2 border-[#BCDD19] text-[#BCDD19] font-bold">⚡</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#58a6ff] via-[#1f6feb] to-[#a371f7] tracking-tight">SNIPPAD</span>
-                <span className="text-xs text-[#7d8590] font-mono uppercase tracking-widest">PRO</span>
+                <span className="text-2xl font-black text-[#BCDD19] tracking-tight">SNIPPAD</span>
+                <span className="text-xs text-[#BCDD19] font-mono uppercase tracking-widest">PRO</span>
               </div>
             </div>
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-lg bg-[#21262d]/50 border border-[#30363d]/50">
-                <span className="w-2 h-2 rounded-full bg-[#238636] animate-pulse"></span>
-                <span className="text-xs text-[#7d8590] font-mono">LIVE</span>
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-lg bg-[#181a20] border border-[#BCDD19]">
+                <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></span>
+                <span className="text-xs text-[#BCDD19] font-mono">LIVE</span>
               </div>
-              <span className="hidden lg:block text-sm text-[#7d8590] tracking-wide font-medium">Next-Gen Code Editor</span>
+              <span className="hidden lg:block text-sm text-[#BCDD19] tracking-wide font-medium">Next-Gen Code Editor</span>
             </div>
           </header>
           
@@ -811,24 +685,29 @@ export const EditorLayout = () => {
           <main className="flex-1 flex flex-col md:flex-row justify-center items-start gap-6 md:gap-8 px-6 md:px-8 py-6 max-w-[1600px] w-full mx-auto transition-all duration-300">
             <section className="flex flex-col gap-4 w-full md:w-[45%] min-w-[0] max-w-full md:max-w-[600px] h-full">
               {/* Active File Editor */}
-              <div className="rounded-2xl shadow-2xl bg-gradient-to-br from-[#0d1117] via-[#161b22] to-[#0d1117] border border-[#30363d]/50 hover:shadow-[#58a6ff]/20 transition-all duration-500 group flex-1 min-h-[200px] md:min-h-[250px] max-h-[70vh] md:max-h-none overflow-auto relative">
+              <div className="rounded-2xl shadow-2xl bg-[#181a20] border-2 border-[#BCDD19] flex flex-col h-full relative overflow-hidden flex-1">
                 {/* Glow effect on hover */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#58a6ff]/5 via-transparent to-[#a371f7]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                
-                <div className="rounded-t-2xl px-6 py-4 bg-gradient-to-r from-[#161b22] to-[#21262d] text-[#c9d1d9] font-bold text-sm tracking-wide border-b border-[#30363d]/50 shadow-lg group-hover:shadow-xl flex items-center justify-between relative z-10">
+                <div className="absolute inset-0 rounded-2xl border-2 border-[#BCDD19] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none shadow-[0_0_24px_2px_#BCDD1933]"></div>
+                <div className="rounded-t-2xl px-6 py-4 bg-[#0a0d14] text-[#BCDD19] font-bold text-sm tracking-wide border-b-2 border-[#BCDD19] shadow-lg flex items-center justify-between relative z-10">
                   <span className="flex items-center gap-3">
-                    <span className="p-2 rounded-lg bg-[#21262d] border border-[#30363d]/50">
+                    <span className="p-2 rounded-lg bg-[#181a20] border border-[#BCDD19]">
                       {getFileIcon(activeFile)}
                     </span>
                     <span className="font-extrabold">{activeFile.name}</span>
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-[#21262d] border border-[#30363d]/50 text-xs text-[#7d8590] uppercase font-mono font-bold">{activeFile.language}</span>
-                    <span className="w-2 h-2 rounded-full bg-[#238636] animate-pulse"></span>
+                    <span className="px-3 py-1 rounded-full bg-[#181a20] border border-[#BCDD19] text-xs text-[#BCDD19] uppercase font-mono font-bold">{activeFile.language}</span>
+                    <span className="w-2 h-2 rounded-full bg-[#BCDD19] animate-pulse"></span>
                   </div>
                 </div>
                 <div className="p-4 min-h-[200px] md:min-h-[250px] h-full relative z-10">
-                  <CodeEditor ref={codeEditorRef} language={activeFile.language} value={activeFile.code} onChange={handleCodeChange} />
+                  <CodeEditor ref={codeEditorRef} language={activeFile.language} value={activeFile.code} onChange={handleCodeChange}
+                    fontSize={editorSettings.fontSize}
+                    tabSize={editorSettings.tabSize}
+                    lineNumbers={editorSettings.lineNumbers}
+                    minimap={editorSettings.minimap}
+                  />
+                  <LintErrorPanel lintMessages={codeEditorRef.current?.getLintMessages ? codeEditorRef.current.getLintMessages() : []} />
                 </div>
               </div>
             </section>
@@ -843,35 +722,38 @@ export const EditorLayout = () => {
           </main>
           
           {/* Bottom Bar */}
-          <footer className="w-full flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6 py-6 md:py-8 bg-gradient-to-r from-[#0d1117] via-[#161b22] to-[#0d1117] border-t border-[#30363d]/50 mt-4 relative">
-            {/* Background glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#58a6ff]/5 to-transparent opacity-50"></div>
-            
-            <button
-              className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-[#238636] to-[#2ea043] hover:from-[#2ea043] hover:to-[#3fb950] text-white font-bold shadow-2xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#238636] active:scale-95 hover:scale-105 relative z-10"
-              onClick={handleRunCode}
-              title="Run the code (Ctrl+Enter)"
-            >
-              <Play size={20} />  Run Code
-            </button>
-            <button
-              className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-[#da3633] to-[#f85149] hover:from-[#f85149] hover:to-[#ff6b6b] text-white font-bold shadow-2xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#da3633] active:scale-95 hover:scale-105 relative z-10"
-              onClick={clearCode}
-              title="Clear all code in all files"
-            >
-              <Trash2 size={20} />  Clear Code
-            </button>
-            <button
-              className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-[#1f6feb] to-[#388bfd] hover:from-[#388bfd] hover:to-[#58a6ff] text-white font-bold shadow-2xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#1f6feb] active:scale-95 hover:scale-105 relative z-10"
-              onClick={exportCode}
-              title="Export as HTML file"
-            >
-              <Download size={20} />  Export
-            </button>
-            
+          <footer className="footer-bar w-full flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6 py-6 md:py-8 bg-[#181a20] border-t-2 border-[#BCDD19] mt-4 relative shadow-[0_2px_10px_0_#BCDD1933]">
+            <div className="footer-btn-boundary border-2 border-[#BCDD19] rounded-2xl p-1 flex items-center justify-center">
+              <button
+                className="output-btn run-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
+                onClick={handleRunCode}
+                title="Run the code (Ctrl+Enter)"
+              >
+                <Play size={20} />  Run Code
+              </button>
+            </div>
+            <div className="footer-btn-boundary border-2 border-[#BCDD19] rounded-2xl p-1 flex items-center justify-center">
+              <button
+                className="output-btn clear-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
+                onClick={clearCode}
+                title="Clear all code in all files"
+              >
+                <Trash2 size={20} />  Clear Code
+              </button>
+            </div>
+            <div className="footer-btn-boundary border-2 border-[#BCDD19] rounded-2xl p-1 flex items-center justify-center">
+              <button
+                className="output-btn export-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
+                onClick={exportCode}
+                title="Export as HTML file"
+              >
+                <Download size={20} />  Export
+              </button>
+            </div>
           </footer>
           
           {/* Toggle Terminal Button */}
+          {/*
           <button
             className="fixed bottom-6 right-6 z-50 px-4 py-2 rounded-lg bg-[#21262d] text-[#c9d1d9] shadow-lg hover:bg-[#30363d] transition-all border border-[#30363d] font-medium"
             onClick={() => setShowTerminal(t => !t)}
@@ -879,13 +761,15 @@ export const EditorLayout = () => {
           >
             {showTerminal ? 'Hide Terminal' : 'Show Terminal'}
           </button>
-          
+          */}
           {/* Node.js Terminal Panel */}
+          {/*
           <TerminalPanel
             showTerminal={showTerminal}
             setShowTerminal={setShowTerminal}
             terminalRef={terminalRef}
           />
+          */}
         </div>
         
         <CommandPaletteModal
@@ -931,6 +815,13 @@ export const EditorLayout = () => {
           languageOptions={languageOptions}
           runtimes={runtimes}
           handleLanguageSelect={handleLanguageSelect}
+        />
+
+        <SettingsModal
+          show={showSettings}
+          setShow={setShowSettings}
+          settings={editorSettings}
+          setSettings={setEditorSettings}
         />
       </div>
     </ErrorBoundary>

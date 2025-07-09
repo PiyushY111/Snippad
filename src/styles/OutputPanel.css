@@ -3,10 +3,10 @@
   flex-direction: column;
   flex: 1;
   height: 100%;
-  background: rgba(255, 255, 255, 0.7);
+  background: #181a20;
   border-radius: 0.5rem;
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 10px rgba(143, 95, 232, 0.1);
+  box-shadow: 0 2px 10px rgba(188, 221, 25, 0.08);
   overflow: hidden;
   transition: all 0.3s ease;
 }
@@ -20,12 +20,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(90deg, #9370DB 0%, #8A2BE2 100%);
-  color: #fff;
+  background: linear-gradient(90deg, #181a20 0%, #0a0d14 100%);
+  color: #BCDD19;
   padding: 0.5rem 1rem;
   font-weight: 600;
   font-size: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #BCDD19;
 }
 .dark .output-toolbar {
   border-bottom: 1px solid #444;
@@ -38,18 +38,19 @@
   gap: 0.5rem;
 }
 .output-btn {
-  background: rgba(255,255,255,0.12);
-  border: none;
+  background: #181a20;
+  border: 1px solid #BCDD19;
   border-radius: 0.375rem;
   padding: 0.3rem 0.5rem;
-  color: #fff;
+  color: #BCDD19;
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s;
   outline: none;
 }
 .output-btn:focus, .output-btn:hover {
-  background: rgba(255,255,255,0.25);
-  box-shadow: 0 0 0 2px #a78bfa;
+  background: #BCDD19;
+  color: #181a20;
+  box-shadow: 0 0 0 2px #BCDD19;
 }
 .dark .output-btn {
   background: rgba(30,30,40,0.2);

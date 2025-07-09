@@ -1,4 +1,5 @@
 import React from 'react';
+import { Settings } from 'lucide-react';
 
 interface File {
   id: number;
@@ -19,6 +20,7 @@ interface SidebarProps {
   getFileIcon: (file: File) => React.ReactNode;
   showSidebar: boolean;
   reorderFiles: (startIdx: number, endIdx: number) => void;
+  setShowSettings?: (val: boolean) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -33,37 +35,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
   getFileIcon,
   showSidebar,
   reorderFiles,
+  setShowSettings,
 }) => {
   const [draggedFileId, setDraggedFileId] = React.useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const filteredFiles = files.filter(f => f.name.toLowerCase().includes(fileSearch.toLowerCase()));
 
   return (
-    <aside className={`fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-[#0d1117] via-[#161b22] to-[#21262d] border-r border-[#30363d]/50 backdrop-blur-sm ${showSidebar ? 'w-64 min-w-[200px] translate-x-0' : 'w-16 min-w-[56px] -translate-x-2'} z-30 transition-all duration-300 ease-in-out shadow-2xl`}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363d]/50 bg-gradient-to-r from-[#0d1117] to-[#161b22]">
-        <span className="font-bold text-lg tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-[#58a6ff] to-[#a371f7] flex items-center gap-2 cursor-pointer select-none">
-          <span className="transition-all duration-300 hover:rotate-12 hover:scale-110 text-[#58a6ff]">⚡</span>
+    <aside className={`fixed top-0 left-0 h-full flex flex-col z-40 transition-all duration-300 ease-in-out ${showSidebar ? 'w-[273px] min-w-[217px]' : 'w-16 min-w-[56px]'} group bg-[#181a20] border-r border-[#BCDD19]`}>
+      {/* Header */}
+      <div className="relative flex items-center justify-between px-4 py-4 border-b border-[#BCDD19]">
+        <span className="font-black text-lg tracking-tight text-[#BCDD19] flex items-center gap-2 cursor-pointer select-none">
+          <span className="">⚡</span>
           {showSidebar && <span className="font-extrabold">FILE EXPLORER</span>}
         </span>
       </div>
+      {/* File Search */}
       {showSidebar && (
-        <div className="px-3 py-2 border-b border-[#30363d]">
+        <div className="px-4 py-3 border-b border-[#BCDD19]">
           <input
             type="text"
             value={fileSearch}
             onChange={e => setFileSearch(e.target.value)}
             placeholder="Search files..."
-            className="w-full px-3 py-2 rounded-md bg-[#0d1117] text-[#c9d1d9] border border-[#30363d] focus:outline-none focus:ring-2 focus:ring-[#58a6ff] focus:border-[#58a6ff] text-sm font-mono"
+            className="w-full px-3 py-2 rounded-md bg-[#0a0d14] text-[#BCDD19] border border-[#BCDD19] focus:outline-none focus:ring-2 focus:ring-[#BCDD19] focus:border-[#BCDD19] text-sm font-mono"
             spellCheck={false}
           />
         </div>
       )}
-      <div className="flex-1 overflow-y-auto py-2 px-2 flex flex-col gap-1">
+      {/* File List */}
+      <div className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-2">
         {filteredFiles.map((file, idx) => (
           <div
             key={file.id}
-            className={`flex items-center ${showSidebar ? 'gap-3 px-3' : 'justify-center px-0'} py-2 rounded-lg cursor-pointer text-sm transition-all duration-300 ${file.id === activeFileId ? 'bg-gradient-to-r from-[#1f6feb] to-[#388bfd] text-white font-medium shadow-lg scale-105' : 'hover:bg-gradient-to-r hover:from-[#21262d] hover:to-[#30363d] text-[#c9d1d9] hover:scale-102'} group relative overflow-hidden`}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-base font-mono transition-all duration-200 border border-transparent ${file.id === activeFileId ? 'bg-[#0a0d14] text-[#BCDD19] border-[#BCDD19] font-bold' : 'bg-[#181a20] text-[#e6e6e6] hover:bg-[#0a0d14] hover:text-[#BCDD19]'} group`}
             onClick={() => setActiveFileId(file.id)}
-            style={{ minHeight: 36 }}
+            style={{ minHeight: 44 }}
             draggable
             onDragStart={() => setDraggedFileId(file.id)}
             onDragOver={e => { e.preventDefault(); }}
@@ -78,31 +85,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
             onDragEnd={() => setDraggedFileId(null)}
           >
-            {file.id === activeFileId && (
-              <div className="absolute inset-0 bg-gradient-to-r from-[#1f6feb]/20 to-[#388bfd]/20 blur-sm"></div>
-            )}
-            <span className="transition-all duration-300 group-hover:scale-125 group-active:scale-95 text-[#7d8590] group-hover:text-[#58a6ff] relative z-10">
+            <span className="transition-all duration-200 group-hover:scale-110 group-active:scale-95 text-[#BCDD19]">
               {getFileIcon(file)}
             </span>
-            {showSidebar && <span className="truncate transition-all duration-200 relative z-10">{file.name}</span>}
-            {file.id === activeFileId && showSidebar && <span className="ml-auto text-xs text-[#58a6ff] animate-pulse relative z-10">●</span>}
+            {showSidebar && <span className="truncate transition-all duration-200">{file.name}</span>}
+            {file.id === activeFileId && showSidebar && <span className="ml-auto text-xs text-[#BCDD19] font-black">●</span>}
           </div>
         ))}
       </div>
-      <div className="p-3 border-t border-[#30363d]/50 flex flex-col gap-3 bg-gradient-to-t from-[#0d1117] to-[#161b22]">
+      {/* Bottom Actions: New File button as a bar above the drawer */}
+      <div className="relative z-30 flex flex-col items-center w-full pb-2 bg-[#181a20]">
         {showSidebar && (
-          <>
-            <button onClick={handleAddFile} className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#238636] to-[#2ea043] hover:from-[#2ea043] hover:to-[#3fb950] text-white font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#238636] shadow-lg hover:shadow-xl hover:scale-105 active:scale-95" title="New File">
-              <span>＋</span><span> New File</span>
-            </button>
-            <button onClick={() => setShowSnippets(true)} className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#21262d] to-[#30363d] hover:from-[#30363d] hover:to-[#484f58] text-[#c9d1d9] font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#58a6ff] shadow-lg hover:shadow-xl hover:scale-105 active:scale-95" title="Snippets">
-              <span>⧉</span><span>Snippets</span>
-            </button>
-            <button onClick={() => setShowLanguageSupport(true)} className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#1f6feb] to-[#388bfd] hover:from-[#388bfd] hover:to-[#58a6ff] text-white font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#1f6feb] shadow-lg hover:shadow-xl hover:scale-105 active:scale-95" title="Language Support & Features">
-              <span>⚙️</span><span>Languages</span>
-            </button>
-          </>
+          <button
+            onClick={handleAddFile}
+            className="mb-3 w-11/12 max-w-[220px] py-4 rounded-full bg-[#0a0d14] border-2 border-[#BCDD19] flex items-center justify-center gap-3 text-[#BCDD19] text-lg font-black hover:scale-105 active:scale-95 transition-all duration-200"
+            title="New File"
+            style={{}}
+          >
+            <span className="text-2xl leading-none">＋</span>
+            <span className="font-bold tracking-wide">New File</span>
+          </button>
         )}
+        {/* Collapsible Drawer for Actions */}
+        <div className={`w-full transition-all duration-200 ${drawerOpen ? 'h-56' : 'h-16'}`}>
+          <div className="relative w-full h-full flex flex-col items-center justify-end bg-[#0a0d14] rounded-t-2xl border-t border-[#BCDD19]">
+            <button
+              onClick={() => setDrawerOpen(d => !d)}
+              className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#0a0d14] border-2 border-[#BCDD19] flex items-center justify-center text-[#BCDD19] text-xl font-black transition-all duration-200"
+              title={drawerOpen ? 'Hide Actions' : 'Show Actions'}
+            >
+              {drawerOpen ? '▼' : '▲'}
+            </button>
+            {drawerOpen && (
+              <div className="w-full flex flex-col gap-3 px-6 py-6">
+                <button onClick={() => setShowSnippets && setShowSnippets(true)} className="w-full py-3 px-4 rounded-xl bg-[#181a20] text-[#BCDD19] font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#BCDD19] border border-[#BCDD19] hover:bg-[#0a0d14] hover:text-[#e6e6e6]" title="Snippets">
+                  <span>⧉</span><span>Snippets</span>
+                </button>
+                <button onClick={() => setShowLanguageSupport && setShowLanguageSupport(true)} className="w-full py-3 px-4 rounded-xl bg-[#0a0d14] text-[#BCDD19] font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#BCDD19] border border-[#BCDD19] hover:bg-[#181a20] hover:text-[#e6e6e6]" title="Language Support & Features">
+                  <span>⚙️</span><span>Languages</span>
+                </button>
+                {setShowSettings && (
+                  <button onClick={() => setShowSettings(true)} className="w-full py-3 px-4 rounded-xl bg-[#0a0d14] text-[#BCDD19] font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#BCDD19] border border-[#BCDD19] hover:bg-[#181a20] hover:text-[#e6e6e6]" title="Editor Settings">
+                    <Settings size={22} />
+                    <span>Settings</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </aside>
   );

@@ -31,12 +31,12 @@ export const LanguageSupportModal: React.FC<LanguageSupportModalProps> = ({
   if (!showLanguageSupport) return null;
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-[#161b22]/95 backdrop-blur-lg rounded-lg shadow-2xl p-6 min-w-[320px] max-w-[95vw] max-h-[90vh] flex flex-col gap-5 border border-[#30363d] relative animate-fade-in overflow-hidden">
+      <div className="output-panel bg-[#181a20] border-2 border-[#BCDD19] rounded-2xl shadow-2xl p-6 min-w-[320px] max-w-[95vw] max-h-[90vh] flex flex-col gap-5 relative animate-fade-in overflow-hidden">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#c9d1d9] mb-1 tracking-tight">Language Support & Features</h2>
+          <h2 className="text-xl font-bold text-[#BCDD19] mb-1 tracking-tight">Language Support & Features</h2>
           <button
             onClick={() => setShowLanguageSupport(false)}
-            className="text-[#7d8590] hover:text-[#c9d1d9] text-xl font-bold p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-[#58a6ff] bg-[#21262d]/50 shadow-sm"
+            className="text-[#BCDD19] hover:text-[#181a20] text-xl font-bold p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-[#BCDD19] bg-[#181a20] border border-[#BCDD19] shadow-sm"
           >
             ×
           </button>
@@ -52,34 +52,34 @@ export const LanguageSupportModal: React.FC<LanguageSupportModalProps> = ({
                 'python', 'cpp', 'c', 'java', 'csharp', 'go', 'ruby', 'php', 'rust', 'swift', 'kotlin', 'bash', 'typescript'
               ].includes(lang.value);
               return (
-                <div key={lang.value} className="bg-[#21262d] border border-[#30363d] rounded-md p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                <div key={lang.value} className="bg-[#181a20] border-2 border-[#BCDD19] rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[#58a6ff]">{lang.icon}</span>
-                    <h3 className="font-medium text-[#c9d1d9]">{lang.label}</h3>
+                    <span className="text-[#BCDD19]">{lang.icon}</span>
+                    <h3 className="font-medium text-[#BCDD19]">{lang.label}</h3>
                   </div>
-                  <div className="space-y-2 text-sm text-[#7d8590]">
+                  <div className="space-y-2 text-sm text-[#e6e6e6]">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#238636]"></span>
+                      <span className="w-2 h-2 rounded-full bg-[#BCDD19]"></span>
                       <span>Syntax Highlighting</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#238636]"></span>
+                      <span className="w-2 h-2 rounded-full bg-[#BCDD19]"></span>
                       <span>Auto-completion</span>
                     </div>
                     {isExecutable && (
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#1f6feb]"></span>
+                        <span className="w-2 h-2 rounded-full bg-[#BCDD19]"></span>
                         <span>Code Execution</span>
                       </div>
                     )}
                     {runtime && (
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#a371f7]"></span>
+                        <span className="w-2 h-2 rounded-full bg-[#BCDD19]"></span>
                         <span>Runtime: {runtime.version}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#f0883e]"></span>
+                      <span className="w-2 h-2 rounded-full bg-[#BCDD19]"></span>
                       <span>File Extension: .{lang.ext}</span>
                     </div>
                   </div>
@@ -88,7 +88,7 @@ export const LanguageSupportModal: React.FC<LanguageSupportModalProps> = ({
                       handleLanguageSelect(lang);
                       setShowLanguageSupport(false);
                     }}
-                    className="mt-3 w-full py-2 px-3 bg-[#238636] hover:bg-[#2ea043] text-white font-medium text-sm rounded-md transition-all duration-200"
+                    className="mt-3 w-full py-2 px-3 bg-[#BCDD19] hover:bg-[#e6e6e6] text-[#181a20] font-medium text-sm rounded-md border-2 border-[#BCDD19] transition-all duration-200"
                   >
                     Create {lang.label} File
                   </button>
@@ -96,24 +96,24 @@ export const LanguageSupportModal: React.FC<LanguageSupportModalProps> = ({
               );
             })}
           </div>
-          <div className="mt-6 p-4 bg-[#0d1117] border border-[#30363d] rounded-md">
-            <h4 className="font-medium text-[#58a6ff] mb-3">Features Legend</h4>
+          <div className="mt-6 p-4 bg-[#181a20] border-2 border-[#BCDD19] rounded-md">
+            <h4 className="font-medium text-[#BCDD19] mb-3">Features Legend</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#238636]"></span>
-                <span className="text-[#7d8590]">Basic Support (Syntax Highlighting, Auto-completion)</span>
+                <span className="w-3 h-3 rounded-full bg-[#BCDD19]"></span>
+                <span className="text-[#e6e6e6]">Basic Support (Syntax Highlighting, Auto-completion)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#1f6feb]"></span>
-                <span className="text-[#7d8590]">Code Execution (Run & Test)</span>
+                <span className="w-3 h-3 rounded-full bg-[#BCDD19]"></span>
+                <span className="text-[#e6e6e6]">Code Execution (Run & Test)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#a371f7]"></span>
-                <span className="text-[#7d8590]">Runtime Information</span>
+                <span className="w-3 h-3 rounded-full bg-[#BCDD19]"></span>
+                <span className="text-[#e6e6e6]">Runtime Information</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#f0883e]"></span>
-                <span className="text-[#7d8590]">File Extension Support</span>
+                <span className="w-3 h-3 rounded-full bg-[#BCDD19]"></span>
+                <span className="text-[#e6e6e6]">File Extension Support</span>
               </div>
             </div>
           </div>

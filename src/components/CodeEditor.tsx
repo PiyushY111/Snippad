@@ -5,14 +5,20 @@ import '../styles/CodeEditor.css';
 import prettier from 'prettier/standalone';
 import parserBabel from 'prettier/parser-babel';
 import * as monaco from 'monaco-editor';
+// Add ESLint4b import
+import LinterLib from 'eslint-linter-browserify';
 
 interface CodeEditorProps {
   language: string;
   value: string;
   onChange: (value: string) => void;
+  fontSize?: number;
+  tabSize?: number;
+  lineNumbers?: boolean;
+  minimap?: boolean;
 }
 
-export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, onChange }, ref) => {
+export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, onChange, fontSize = 14, tabSize = 2, lineNumbers = true, minimap = false }, ref) => {
   // Initialize theme state with a unique key for each language
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const savedTheme = localStorage.getItem(`editor-theme-${language}`);
@@ -35,6 +41,19 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
   const [editorHeight, setEditorHeight] = useState(300);
   const resizerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+
+  // ESLint instance (singleton)
+  const linterRef = useRef<any>(null);
+  if (!linterRef.current && typeof window !== 'undefined') {
+    try {
+      linterRef.current = new LinterLib.Linter();
+    } catch (e) {
+      linterRef.current = null;
+    }
+  }
+
+  // Add lint messages state
+  const [lintMessages, setLintMessages] = useState<any[]>([]);
 
   // Apply keybindings
   function handleEditorDidMount(editor: any, monacoInstance: typeof monaco) {
@@ -91,7 +110,72 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
     editor.onDidChangeModelContent(() => {
       setSaveStatus('unsaved');
     });
+    // Register custom Monaco theme using the provided monaco instance
+    if (monacoInstance && monacoInstance.editor && monacoInstance.editor.defineTheme) {
+      monacoInstance.editor.defineTheme('snippad-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+          { token: '', foreground: 'e6e6e6', background: '181a20' },
+          { token: 'comment', foreground: '7a7a7a' },
+          { token: 'string', foreground: 'e6e6e6' },
+          { token: 'number', foreground: 'BCDD19' },
+          { token: 'keyword', foreground: 'BCDD19', fontStyle: 'bold' },
+          { token: 'identifier', foreground: 'e6e6e6' },
+          { token: 'delimiter', foreground: 'BCDD19' },
+          { token: 'type', foreground: 'BCDD19' },
+          { token: 'function', foreground: 'BCDD19' },
+          { token: 'variable', foreground: 'BCDD19' },
+          { token: 'operator', foreground: 'BCDD19' },
+          { token: 'class', foreground: 'BCDD19' },
+          { token: 'interface', foreground: 'BCDD19' },
+          { token: 'constant', foreground: 'BCDD19' },
+          { token: 'tag', foreground: 'BCDD19' },
+          { token: 'attribute.name', foreground: 'BCDD19' },
+          { token: 'attribute.value', foreground: 'e6e6e6' },
+        ],
+        colors: {
+          'editor.background': '#181a20',
+          'editor.foreground': '#e6e6e6',
+          'editor.lineHighlightBackground': '#232336',
+          'editorCursor.foreground': '#BCDD19',
+          'editor.selectionBackground': '#BCDD1940',
+          'editor.inactiveSelectionBackground': '#BCDD1915',
+          'editorLineNumber.foreground': '#7a7a7a',
+          'editorLineNumber.activeForeground': '#BCDD19',
+          'editorIndentGuide.background': '#232336',
+          'editorIndentGuide.activeBackground': '#BCDD19',
+          'editorWidget.background': '#232336',
+          'editorWidget.border': '#BCDD19',
+          'editorBracketMatch.background': '#232336',
+          'editorBracketMatch.border': '#BCDD19',
+          'editorGutter.background': '#181a20',
+          'editorGutter.modifiedBackground': '#BCDD19',
+          'editorGutter.addedBackground': '#BCDD19',
+          'editorGutter.deletedBackground': '#ff5252',
+          'editorWhitespace.foreground': '#232336',
+          'editor.selectionHighlightBackground': '#BCDD1920',
+          'editor.findMatchBackground': '#BCDD1940',
+          'editor.findMatchHighlightBackground': '#BCDD1920',
+          'editor.wordHighlightBackground': '#BCDD1920',
+          'editor.wordHighlightStrongBackground': '#BCDD1940',
+          'editorError.foreground': '#ff5252',
+          'editorWarning.foreground': '#facc15',
+          'editorInfo.foreground': '#BCDD19',
+        },
+      });
+    }
   }
+
+  // Expose getLintMessages via ref
+  useImperativeHandle(ref, () => ({
+    insertSnippet: (snippet: string) => {
+      if (editorRef.current && editorRef.current.insertSnippet) {
+        editorRef.current.insertSnippet(snippet);
+      }
+    },
+    getLintMessages: () => lintMessages,
+  }));
 
   // Auto-save functionality
   useEffect(() => {
@@ -100,14 +184,35 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
       setSaveStatus('saved');
     }
     // Linting for JS/TS
-    if (['javascript', 'typescript'].includes(language)) {
+    if ((language === 'javascript' || language === 'typescript') && linterRef.current) {
       const model = monaco.editor.getModels().find(m => m.getValue() === value);
       if (model) {
         monaco.editor.setModelMarkers(model, 'eslint', []); // Clear previous
         try {
-          // Monaco does basic syntax checking by default
-          // For custom linting, integrate ESLint here (future enhancement)
+          // Run ESLint
+          const messages = linterRef.current.verify(value, {
+            parserOptions: { ecmaVersion: 2020, sourceType: 'module' },
+            env: { browser: true, es6: true },
+            rules: {
+              semi: ['error', 'always'],
+              'no-unused-vars': 'warn',
+              'no-undef': 'warn',
+              'no-console': 'off',
+            },
+          });
+          setLintMessages(messages);
+          const markers = messages.map((msg: any) => ({
+            startLineNumber: msg.line || 1,
+            startColumn: msg.column || 1,
+            endLineNumber: msg.endLine || msg.line || 1,
+            endColumn: msg.endColumn || msg.column + 1 || 2,
+            message: msg.message,
+            severity: msg.severity === 2 ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+            source: 'eslint',
+          }));
+          monaco.editor.setModelMarkers(model, 'eslint', markers);
         } catch (e) {
+          setLintMessages([{ message: 'Linting error: ' + (e instanceof Error ? e.message : String(e)), severity: 2, line: 1, column: 1 }]);
           monaco.editor.setModelMarkers(model, 'eslint', [{
             startLineNumber: 1,
             startColumn: 1,
@@ -117,7 +222,11 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
             severity: monaco.MarkerSeverity.Error,
           }]);
         }
+      } else {
+        setLintMessages([]);
       }
+    } else {
+      setLintMessages([]);
     }
   }, [value, language, isAutoSave]);
 
@@ -187,9 +296,9 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full rounded-lg shadow-lg border border-[#BCDD19] bg-[#181a20]" style={{ background: '#181a20' }}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-2 py-1 bg-[#181a20] dark:bg-[#181a20] border-b border-[#232336] shadow-sm">
+      <div className="flex items-center justify-between px-2 py-1 bg-[#0a0d14] border-b border-[#BCDD19] shadow-sm">
         <div className="flex items-center space-x-1">
           <button
             onClick={toggleTheme}
@@ -244,10 +353,12 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
             defaultLanguage={language}
             value={value}
             onChange={(value) => onChange(value || '')}
-            theme={theme === 'light' ? 'light' : 'vs-dark'}
+            theme={theme === 'light' ? 'light' : 'snippad-dark'}
             options={{
-              minimap: { enabled: false },
-              fontSize: 14,
+              minimap: { enabled: minimap },
+              fontSize: fontSize,
+              tabSize: tabSize,
+              lineNumbers: lineNumbers ? 'on' : 'off',
               fontFamily: 'JetBrains Mono, monospace',
               lineHeight: 1.6,
               wordWrap: 'on',

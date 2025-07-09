@@ -27,3 +27,5 @@ export interface LanguageOption {
 interface Window {
   Prism: any;
 }
+
+declare module 'eslint4b';
