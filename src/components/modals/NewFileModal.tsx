@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 
 interface NewFileModalProps {
   showAddFile: boolean;
@@ -24,62 +25,83 @@ export const NewFileModal: React.FC<NewFileModalProps> = ({
   files,
 }) => {
   if (!showAddFile) return null;
+  
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onKeyDown={e => {
-      if (e.key === 'Escape') setShowAddFile(false);
-      if (e.key === 'Enter') handleCreateFile();
-    }}>
-      <div className="output-panel bg-[#181a20] border-2 border-[#BCDD19] rounded-2xl shadow-2xl p-6 min-w-[320px] max-w-[95vw] flex flex-col gap-5 relative animate-fade-in">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-[#BCDD19] mb-1 tracking-tight">Create New File</h2>
-          <button onClick={() => setShowAddFile(false)} className="text-[#BCDD19] hover:text-[#181a20] text-xl font-bold p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-[#BCDD19] bg-[#181a20] border border-[#BCDD19] shadow-sm" title="Close">×</button>
-        </div>
-        <label className="flex flex-col gap-2 font-mono text-sm text-[#BCDD19]">
-          File Name
-          <input
-            type="text"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            placeholder="e.g. myfile.js"
-            className="p-3 rounded-md border-2 border-[#BCDD19] focus:border-[#BCDD19] focus:ring-2 focus:ring-[#BCDD19] bg-[#181a20] text-[#BCDD19] font-mono text-sm transition-all outline-none shadow-sm"
-            autoFocus
-            spellCheck={false}
-            maxLength={40}
-          />
-        </label>
-        <label className="flex flex-col gap-2 font-mono text-sm text-[#BCDD19]">
-          Language
-          <select
-            value={newLang}
-            onChange={e => setNewLang(e.target.value)}
-            className="p-3 rounded-md border-2 border-[#BCDD19] focus:border-[#BCDD19] focus:ring-2 focus:ring-[#BCDD19] bg-[#181a20] text-[#BCDD19] font-mono text-sm transition-all outline-none shadow-sm cursor-pointer"
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+         onKeyDown={e => {
+           if (e.key === 'Escape') setShowAddFile(false);
+           if (e.key === 'Enter') handleCreateFile();
+         }}>
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Create New File</h2>
+          <button 
+            onClick={() => setShowAddFile(false)} 
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+            title="Close"
           >
-            {languageOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </label>
-        {/* Error message for empty or duplicate file name */}
-        {(!newName.trim() || files.some(f => f.name === newName.trim())) && (
-          <div className="text-[#f85149] font-mono text-sm -mt-3">
-            { !newName.trim() ? 'File name cannot be empty.' : 'A file with this name already exists.' }
+            <X size={20} />
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              File Name
+            </label>
+            <input
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="e.g. myfile.js"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              autoFocus
+              spellCheck={false}
+              maxLength={40}
+            />
           </div>
-        )}
-        <div className="flex gap-4 mt-2 justify-end">
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Language
+            </label>
+            <select
+              value={newLang}
+              onChange={e => setNewLang(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm cursor-pointer"
+            >
+              {languageOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Error message */}
+          {(!newName.trim() || files.some(f => f.name === newName.trim())) && (
+            <div className="text-red-600 text-sm">
+              {!newName.trim() ? 'File name cannot be empty.' : 'A file with this name already exists.'}
+            </div>
+          )}
+        </div>
+        
+        {/* Footer */}
+        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
           <button
             onClick={() => setShowAddFile(false)}
-            className="px-5 py-2 rounded-md bg-[#181a20] hover:bg-[#232336] text-[#BCDD19] font-medium shadow-sm transition-all border-2 border-[#BCDD19] focus:outline-none focus:ring-2 focus:ring-[#BCDD19]"
+            className="btn btn-secondary"
             type="button"
           >
             Cancel
           </button>
           <button
             onClick={handleCreateFile}
-            className="px-5 py-2 rounded-md bg-[#BCDD19] hover:bg-[#e6e6e6] text-[#181a20] font-medium shadow-md transition-all border-2 border-[#BCDD19] focus:outline-none focus:ring-2 focus:ring-[#BCDD19] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-primary"
             disabled={!newName.trim() || files.some(f => f.name === newName.trim())}
             type="button"
           >
-            Create
+            Create File
           </button>
         </div>
       </div>

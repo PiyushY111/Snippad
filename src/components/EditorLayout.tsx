@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { CodeEditor } from './CodeEditor';
-import { Play, Trash2, Download, Code2, Plus, X, Edit2, FileText, FileCode2, FileJson, FileType, User, Settings } from 'lucide-react';
+import { Play, Trash2, Download, Code2, Plus, X, Edit2, FileText, FileCode2, FileJson, FileType, User, Settings, GripVertical } from 'lucide-react';
 import axios from 'axios';
 import { Sidebar } from './Sidebar';
 import { FileTabs } from './FileTabs';
@@ -616,23 +616,128 @@ export const EditorLayout = () => {
     localStorage.setItem('editor-settings', JSON.stringify(editorSettings));
   }, [editorSettings]);
 
+  // Panel resizing state
+  const [editorWidth, setEditorWidth] = useState(() => {
+    const saved = localStorage.getItem('editor-width');
+    return saved ? parseInt(saved) : 60; // 60% default
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<HTMLDivElement>(null);
+
+  // Save editor width to localStorage
+  useEffect(() => {
+    localStorage.setItem('editor-width', editorWidth.toString());
+  }, [editorWidth]);
+
+  // Reset panel sizes
+  const resetPanelSizes = () => {
+    setEditorWidth(60);
+  };
+
+  // Resize handlers
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    document.body.classList.add('resizing');
+  };
+
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+    
+    const container = resizeRef.current?.parentElement;
+    if (!container) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+    
+    // Constrain to reasonable bounds (25% - 75%)
+    const constrainedWidth = Math.max(25, Math.min(75, newWidth));
+    setEditorWidth(constrainedWidth);
+  }, [isResizing]);
+
+  const handleResizeEnd = useCallback(() => {
+    setIsResizing(false);
+    document.body.classList.remove('resizing');
+  }, []);
+
+  // Add/remove event listeners
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  }, [isResizing, handleResizeMove, handleResizeEnd]);
+
+  // Keyboard shortcuts for panel resizing
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setShowPalette(true);
+      }
+      if (e.key === 'Escape') setShowPalette(false);
+      
+      // Reset panel sizes with Ctrl/Cmd + Shift + R
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        resetPanelSizes();
+        toast.success('Panel sizes reset to default');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   return (
     <ErrorBoundary>
-      <div
-        className="min-h-screen bg-gradient-to-br from-[#0a0d14] via-[#0d1117] to-[#161b22] flex flex-row font-['JetBrains_Mono',_monospace] text-[#c9d1d9] relative overflow-hidden"
-        style={{ minHeight: '100dvh', position: 'relative' }}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-      >
-        <Toaster position="top-right" />
-        {/* Animated background grid */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #58a6ff 1px, transparent 0)`,
-            backgroundSize: '20px 20px'
-          }}></div>
-        </div>
+      <div className="h-screen bg-gray-50 flex flex-col font-['Inter',_sans-serif] text-gray-900">
+        <Toaster 
+          position="top-right" 
+          toastOptions={{
+            style: {
+              background: '#ffffff',
+              color: '#1e293b',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            },
+          }}
+        />
+        
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
+                <Code2 size={20} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">Code Editor</h1>
+                <p className="text-sm text-gray-500">Professional development environment</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 px-3 py-1 bg-green-50 border border-green-200 rounded-md">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs font-medium text-green-700">Live</span>
+              </div>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                title="Settings"
+              >
+                <Settings size={18} />
+              </button>
+            </div>
+          </div>
+        </header>
+        
+        {/* Main Content */}
+        <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
         <Sidebar
           files={files}
@@ -649,29 +754,9 @@ export const EditorLayout = () => {
           setShowSettings={setShowSettings}
         />
         
-        {/* Main Area */}
-        <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${showSidebar ? 'ml-64' : 'ml-16'}`}>
-          {/* Header */}
-          <header className="header-bar w-full flex flex-row items-center justify-between bg-[#181a20] border-b-2 border-[#BCDD19] rounded-2xl mt-4 mb-2 px-6 py-4 shadow-[0_2px_10px_0_#BCDD1933]">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <span className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#181a20] border-2 border-[#BCDD19] text-[#BCDD19] font-bold">⚡</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-black text-[#BCDD19] tracking-tight">SNIPPAD</span>
-                <span className="text-xs text-[#BCDD19] font-mono uppercase tracking-widest">PRO</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-lg bg-[#181a20] border border-[#BCDD19]">
-                <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></span>
-                <span className="text-xs text-[#BCDD19] font-mono">LIVE</span>
-              </div>
-              <span className="hidden lg:block text-sm text-[#BCDD19] tracking-wide font-medium">Next-Gen Code Editor</span>
-            </div>
-          </header>
-          
-          {/* File Tabs (horizontal, VS Code style) */}
+          {/* Main Editor Area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* File Tabs */}
           <FileTabs
             files={files}
             activeFileId={activeFileId}
@@ -681,37 +766,72 @@ export const EditorLayout = () => {
             showSidebar={showSidebar}
           />
           
-          {/* Main Content Area */}
-          <main className="flex-1 flex flex-col md:flex-row justify-center items-start gap-6 md:gap-8 px-6 md:px-8 py-6 max-w-[1600px] w-full mx-auto transition-all duration-300">
-            <section className="flex flex-col gap-4 w-full md:w-[45%] min-w-[0] max-w-full md:max-w-[600px] h-full">
-              {/* Active File Editor */}
-              <div className="rounded-2xl shadow-2xl bg-[#181a20] border-2 border-[#BCDD19] flex flex-col h-full relative overflow-hidden flex-1">
-                {/* Glow effect on hover */}
-                <div className="absolute inset-0 rounded-2xl border-2 border-[#BCDD19] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none shadow-[0_0_24px_2px_#BCDD1933]"></div>
-                <div className="rounded-t-2xl px-6 py-4 bg-[#0a0d14] text-[#BCDD19] font-bold text-sm tracking-wide border-b-2 border-[#BCDD19] shadow-lg flex items-center justify-between relative z-10">
-                  <span className="flex items-center gap-3">
-                    <span className="p-2 rounded-lg bg-[#181a20] border border-[#BCDD19]">
-                      {getFileIcon(activeFile)}
-                    </span>
-                    <span className="font-extrabold">{activeFile.name}</span>
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-[#181a20] border border-[#BCDD19] text-xs text-[#BCDD19] uppercase font-mono font-bold">{activeFile.language}</span>
-                    <span className="w-2 h-2 rounded-full bg-[#BCDD19] animate-pulse"></span>
+            {/* Editor and Output */}
+            <div className="flex-1 flex overflow-hidden" ref={resizeRef}>
+              {/* Code Editor */}
+              <div 
+                className="flex flex-col bg-white border-r border-gray-200"
+                style={{ width: `${editorWidth}%` }}
+              >
+                <div className="flex-1 flex flex-col">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
+                          <span className="text-white text-sm">
+                            {getFileIcon(activeFile)}
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 truncate max-w-48">
+                            {activeFile.name}
+                          </h3>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-md">
+                              {activeFile.language}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {activeFile.code.length} characters
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 border border-green-200 rounded-md">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-xs font-medium text-green-700">Saved</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="p-4 min-h-[200px] md:min-h-[250px] h-full relative z-10">
-                  <CodeEditor ref={codeEditorRef} language={activeFile.language} value={activeFile.code} onChange={handleCodeChange}
+                  <div className="flex-1 p-4">
+                    <CodeEditor 
+                      ref={codeEditorRef} 
+                      language={activeFile.language} 
+                      value={activeFile.code} 
+                      onChange={handleCodeChange}
                     fontSize={editorSettings.fontSize}
                     tabSize={editorSettings.tabSize}
                     lineNumbers={editorSettings.lineNumbers}
                     minimap={editorSettings.minimap}
                   />
-                  <LintErrorPanel lintMessages={codeEditorRef.current?.getLintMessages ? codeEditorRef.current.getLintMessages() : []} />
                 </div>
               </div>
-            </section>
+              </div>
+              
+              {/* Resize Handle */}
+              <div
+                className={`resize-handle ${isResizing ? 'resizing' : ''}`}
+                onMouseDown={handleResizeStart}
+                title="Drag to resize panels"
+              >
+                <div className="grip-icon">
+                  <GripVertical size={16} className="text-blue-500" />
+                </div>
+              </div>
+              
             {/* Output Panel */}
+              <div style={{ width: `${100 - editorWidth}%` }}>
             <OutputPanel
               activeFile={activeFile}
               activeFileId={activeFileId}
@@ -719,55 +839,74 @@ export const EditorLayout = () => {
               outputType={outputType}
               handleClearOutput={handleClearOutput}
             />
-          </main>
-          
-          {/* Bottom Bar */}
-          <footer className="footer-bar w-full flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6 py-6 md:py-8 bg-[#181a20] border-t-2 border-[#BCDD19] mt-4 relative shadow-[0_2px_10px_0_#BCDD1933]">
-            <div className="flex gap-4 border-2 border-[#BCDD19] rounded-2xl p-2 bg-[#181a20]">
-              <button
-                className="output-btn run-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
-                onClick={handleRunCode}
-                title="Run the code (Ctrl+Enter)"
-              >
-                <Play size={20} />  Run Code
-              </button>
-              <button
-                className="output-btn clear-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
-                onClick={clearCode}
-                title="Clear all code in all files"
-              >
-                <Trash2 size={20} />  Clear Code
-              </button>
-              <button
-                className="output-btn export-btn flex items-center gap-3 px-8 py-4 text-base font-bold relative z-10"
-                onClick={exportCode}
-                title="Export as HTML file"
-              >
-                <Download size={20} />  Export
-              </button>
+              </div>
             </div>
-          </footer>
           
-          {/* Toggle Terminal Button */}
-          {/*
-          <button
-            className="fixed bottom-6 right-6 z-50 px-4 py-2 rounded-lg bg-[#21262d] text-[#c9d1d9] shadow-lg hover:bg-[#30363d] transition-all border border-[#30363d] font-medium"
-            onClick={() => setShowTerminal(t => !t)}
-            title="Toggle Node.js Terminal"
-          >
-            {showTerminal ? 'Hide Terminal' : 'Show Terminal'}
-          </button>
-          */}
-          {/* Node.js Terminal Panel */}
-          {/*
-          <TerminalPanel
-            showTerminal={showTerminal}
-            setShowTerminal={setShowTerminal}
-            terminalRef={terminalRef}
-          />
-          */}
+            {/* Action Bar */}
+            <div className="bg-white border-t border-gray-200 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={handleRunCode}
+                    className="btn btn-primary"
+                    title="Run Code (Ctrl+Enter)"
+                  >
+                    <Play size={16} className="mr-2" />
+                    Run Code
+                  </button>
+                  <button
+                    onClick={clearCode}
+                    className="btn btn-secondary"
+                    title="Clear all code"
+                  >
+                    <Trash2 size={16} className="mr-2" />
+                    Clear
+                  </button>
+                  <button
+                    onClick={exportCode}
+                    className="btn btn-secondary"
+                    title="Export as HTML"
+                  >
+                    <Download size={16} className="mr-2" />
+                    Export
+                  </button>
+                  <div className="h-6 w-px bg-gray-300"></div>
+                  <button
+                    onClick={resetPanelSizes}
+                    className="btn btn-secondary"
+                    title="Reset panel sizes (Ctrl+Shift+R)"
+                  >
+                    <GripVertical size={16} className="mr-2" />
+                    Reset Layout
+                  </button>
+                </div>
+                <div className="flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-600 font-medium">Editor:</span>
+                      <span className="text-blue-600 font-semibold">{Math.round(editorWidth)}%</span>
+                    </div>
+                    <div className="w-px h-4 bg-gray-300"></div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-600 font-medium">Output:</span>
+                      <span className="text-blue-600 font-semibold">{Math.round(100 - editorWidth)}%</span>
+                    </div>
+                  </div>
+                  <div className="h-6 w-px bg-gray-300"></div>
+                  <div className="flex items-center space-x-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
+                    <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-md">
+                      {activeFile.language}
+                    </span>
+                    <span className="text-gray-500">•</span>
+                    <span className="text-gray-600 font-mono">{activeFile.code.length} chars</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
+        {/* Modals */}
         <CommandPaletteModal
           showPalette={showPalette}
           setShowPalette={setShowPalette}

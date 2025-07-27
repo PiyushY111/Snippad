@@ -24,16 +24,16 @@
   top: 0;
   left: 0;
   white-space: pre;
-  font-family: 'Fira Code', monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   tab-size: 2;
 }
 
 .editor-textarea {
   color: transparent;
   background: transparent;
-  caret-color: #fff;
+  caret-color: #1e293b;
   caret-shape: block;
   resize: none;
   z-index: 1;
@@ -47,8 +47,8 @@
 
 .editor-highlighting {
   z-index: 0;
-  background: #181a20;
-  color: #e6e6e6;
+  background: #ffffff;
+  color: #1e293b;
   pointer-events: none;
   min-height: 200px;
   overflow: hidden;
@@ -59,11 +59,11 @@
 .token.prolog,
 .token.doctype,
 .token.cdata {
-  color: #7a7a7a;
+  color: #64748b;
 }
 
 .token.punctuation {
-  color: #BCDD19;
+  color: #475569;
 }
 
 .token.namespace {
@@ -76,7 +76,7 @@
 .token.number,
 .token.constant,
 .token.symbol {
-  color: #BCDD19;
+  color: #3b82f6;
 }
 
 .token.selector,
@@ -84,7 +84,7 @@
 .token.string,
 .token.char,
 .token.builtin {
-  color: #e6e6e6;
+  color: #059669;
 }
 
 .token.operator,
@@ -93,18 +93,18 @@
 .language-css .token.string,
 .token.variable,
 .token.inserted {
-  color: #BCDD19;
+  color: #7c3aed;
 }
 
 .token.atrule,
 .token.attr-value,
 .token.keyword {
-  color: #BCDD19;
+  color: #dc2626;
 }
 
 .token.regex,
 .token.important {
-  color: #BCDD19;
+  color: #ea580c;
 }
 
 .token.important,
@@ -121,7 +121,7 @@
 }
 
 .token.deleted {
-  color: #BCDD19;
+  color: #dc2626;
 }
 
 /* Cursor animation */
@@ -140,7 +140,7 @@
 }
 
 @keyframes highlight {
-  0% { background-color: rgba(147, 112, 219, 0.2); }
+  0% { background-color: rgba(59, 130, 246, 0.1); }
   100% { background-color: transparent; }
 }
 
@@ -151,8 +151,8 @@
 }
 
 .editor-container:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(143, 95, 232, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 @keyframes fadeIn {
@@ -162,20 +162,16 @@
 
 /* Syntax highlighting animations */
 .token {
-  transition: color 0.3s ease;
-}
-
-.token:hover {
-  color: #BCDD19 !important;
+  transition: color 0.2s ease;
 }
 
 /* Line number animations */
 .monaco-editor .margin-view-overlays .cgmr {
-  transition: background-color 0.3s ease;
+  transition: background-color 0.2s ease;
 }
 
 .monaco-editor .margin-view-overlays .cgmr:hover {
-  background-color: rgba(188, 221, 25, 0.1);
+  background-color: rgba(59, 130, 246, 0.1);
 }
 
 /* Selection animation */
@@ -184,18 +180,14 @@
 }
 
 @keyframes selectPulse {
-  0% { background-color: rgba(188, 221, 25, 0.2); }
-  50% { background-color: rgba(188, 221, 25, 0.3); }
-  100% { background-color: rgba(188, 221, 25, 0.2); }
+  0% { background-color: rgba(59, 130, 246, 0.2); }
+  50% { background-color: rgba(59, 130, 246, 0.3); }
+  100% { background-color: rgba(59, 130, 246, 0.2); }
 }
 
 /* Editor panel transitions */
 .editor-panel {
   transition: all 0.3s ease;
-}
-
-.editor-panel:hover .editor-container {
-  transform: scale(1.01);
 }
 
 /* Smooth theme transition */
@@ -205,10 +197,10 @@
 
 /* Active line highlight */
 .monaco-editor .view-overlays .current-line {
-  border-left: 3px solid #BCDD19;
+  border-left: 2px solid #3b82f6;
   transition: border-left-color 0.3s ease;
 }
 
 .monaco-editor .view-overlays .current-line:hover {
-  border-left-color: #BCDD19;
+  border-left-color: #1d4ed8;
 }

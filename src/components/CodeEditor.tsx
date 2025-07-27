@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import Editor from '@monaco-editor/react';
-import { Moon, Sun, Play, Save, Zap, Info } from 'lucide-react';
+import { Play, Save, Zap, Info, Settings } from 'lucide-react';
 import '../styles/CodeEditor.css';
 import prettier from 'prettier/standalone';
 import parserBabel from 'prettier/parser-babel';
@@ -19,12 +19,6 @@ interface CodeEditorProps {
 }
 
 export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, onChange, fontSize = 14, tabSize = 2, lineNumbers = true, minimap = false }, ref) => {
-  // Initialize theme state with a unique key for each language
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const savedTheme = localStorage.getItem(`editor-theme-${language}`);
-    return (savedTheme as 'light' | 'dark') || 'light';
-  });
-  
   const [isAutoSave, setIsAutoSave] = useState(() => {
     const savedAutoSave = localStorage.getItem(`editor-autosave-${language}`);
     return savedAutoSave ? JSON.parse(savedAutoSave) : true;
@@ -76,7 +70,7 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
     }
     // Run code (Ctrl+Enter)
     editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.Enter, () => {
-      document.querySelector('[title="Run the code (Ctrl+Enter)"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      document.querySelector('[title="Run Code (Ctrl+Enter)"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     // Format code (Ctrl+Shift+F)
     editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyF, () => {
@@ -110,61 +104,6 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
     editor.onDidChangeModelContent(() => {
       setSaveStatus('unsaved');
     });
-    // Register custom Monaco theme using the provided monaco instance
-    if (monacoInstance && monacoInstance.editor && monacoInstance.editor.defineTheme) {
-      monacoInstance.editor.defineTheme('snippad-dark', {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [
-          { token: '', foreground: 'e6e6e6', background: '181a20' },
-          { token: 'comment', foreground: '7a7a7a' },
-          { token: 'string', foreground: 'e6e6e6' },
-          { token: 'number', foreground: 'BCDD19' },
-          { token: 'keyword', foreground: 'BCDD19', fontStyle: 'bold' },
-          { token: 'identifier', foreground: 'e6e6e6' },
-          { token: 'delimiter', foreground: 'BCDD19' },
-          { token: 'type', foreground: 'BCDD19' },
-          { token: 'function', foreground: 'BCDD19' },
-          { token: 'variable', foreground: 'BCDD19' },
-          { token: 'operator', foreground: 'BCDD19' },
-          { token: 'class', foreground: 'BCDD19' },
-          { token: 'interface', foreground: 'BCDD19' },
-          { token: 'constant', foreground: 'BCDD19' },
-          { token: 'tag', foreground: 'BCDD19' },
-          { token: 'attribute.name', foreground: 'BCDD19' },
-          { token: 'attribute.value', foreground: 'e6e6e6' },
-        ],
-        colors: {
-          'editor.background': '#181a20',
-          'editor.foreground': '#e6e6e6',
-          'editor.lineHighlightBackground': '#232336',
-          'editorCursor.foreground': '#BCDD19',
-          'editor.selectionBackground': '#BCDD1940',
-          'editor.inactiveSelectionBackground': '#BCDD1915',
-          'editorLineNumber.foreground': '#7a7a7a',
-          'editorLineNumber.activeForeground': '#BCDD19',
-          'editorIndentGuide.background': '#232336',
-          'editorIndentGuide.activeBackground': '#BCDD19',
-          'editorWidget.background': '#232336',
-          'editorWidget.border': '#BCDD19',
-          'editorBracketMatch.background': '#232336',
-          'editorBracketMatch.border': '#BCDD19',
-          'editorGutter.background': '#181a20',
-          'editorGutter.modifiedBackground': '#BCDD19',
-          'editorGutter.addedBackground': '#BCDD19',
-          'editorGutter.deletedBackground': '#ff5252',
-          'editorWhitespace.foreground': '#232336',
-          'editor.selectionHighlightBackground': '#BCDD1920',
-          'editor.findMatchBackground': '#BCDD1940',
-          'editor.findMatchHighlightBackground': '#BCDD1920',
-          'editor.wordHighlightBackground': '#BCDD1920',
-          'editor.wordHighlightStrongBackground': '#BCDD1940',
-          'editorError.foreground': '#ff5252',
-          'editorWarning.foreground': '#facc15',
-          'editorInfo.foreground': '#BCDD19',
-        },
-      });
-    }
   }
 
   // Expose getLintMessages via ref
@@ -238,12 +177,6 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
     }
   }, [language]);
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem(`editor-theme-${language}`, newTheme);
-  };
-
   const toggleAutoSave = () => {
     const newAutoSave = !isAutoSave;
     setIsAutoSave(newAutoSave);
@@ -296,166 +229,146 @@ export const CodeEditor = forwardRef<any, CodeEditorProps>(({ language, value, o
   }, []);
 
   return (
-    <div className="flex flex-col h-full rounded-lg shadow-lg border border-[#BCDD19] bg-[#181a20]" style={{ background: '#181a20' }}>
+    <div className="flex flex-col h-full bg-white border border-gray-200 rounded-lg shadow-sm">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-2 py-1 bg-[#0a0d14] border-b border-[#BCDD19] shadow-sm">
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={toggleTheme}
-            className="p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-[#232336] transition-colors duration-150"
-            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-            aria-label="Toggle theme"
-          >
-            {theme === 'light' ? <Moon size={16} className="text-gray-400" /> : <Sun size={16} className="text-yellow-400" />}
-          </button>
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+        <div className="flex items-center space-x-2">
           <button
             onClick={toggleAutoSave}
-            className={`p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150 ${
+            className={`p-1.5 rounded text-sm transition-colors ${
               isAutoSave 
-                ? 'bg-blue-900 text-blue-400' 
-                : 'hover:bg-[#232336] text-gray-400'
+                ? 'bg-blue-100 text-blue-600' 
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
             title={isAutoSave ? 'Auto-save Enabled' : 'Auto-save Disabled'}
-            aria-label="Toggle auto-save"
           >
-            <Save size={16} />
+            <Save size={14} />
           </button>
           <button
             onClick={handleFormatCode}
-            className="p-1 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 hover:bg-[#232336] transition-colors duration-150"
-            title="Format Code"
-            aria-label="Format code"
+            className="p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            title="Format Code (Ctrl+Shift+F)"
           >
-            <span role="img" aria-label="Format">🧹</span>
+            <span className="text-sm">⚡</span>
           </button>
           <button
             onClick={toggleLivePreview}
-            className={`p-1 rounded focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-150 ${
+            className={`p-1.5 rounded text-sm transition-colors ${
               isLivePreview
-                ? 'bg-green-900 text-green-400'
-                : 'hover:bg-[#232336] text-gray-400'
+                ? 'bg-green-100 text-green-600'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
             title={isLivePreview ? 'Live Preview Enabled' : 'Live Preview Disabled'}
-            aria-label="Toggle live preview"
           >
-            <Zap size={16} />
+            <Zap size={14} />
           </button>
         </div>
-        <div className="text-xs font-mono text-gray-400 tracking-widest select-none">
+        <div className="text-xs font-medium text-gray-500">
           {language.toUpperCase()}
         </div>
       </div>
-      {/* Editor Panel with Resizer */}
-      <div className="relative flex-1 flex flex-col">
-        <div style={{ height: editorHeight }} className="transition-all duration-200">
-          <Editor
-            height="100%"
-            defaultLanguage={language}
-            value={value}
-            onChange={(value) => onChange(value || '')}
-            theme={theme === 'light' ? 'light' : 'snippad-dark'}
-            options={{
-              minimap: { enabled: minimap },
-              fontSize: fontSize,
-              tabSize: tabSize,
-              lineNumbers: lineNumbers ? 'on' : 'off',
-              fontFamily: 'JetBrains Mono, monospace',
-              lineHeight: 1.6,
-              wordWrap: 'on',
-              automaticLayout: true,
-              padding: { top: 16, bottom: 16 },
-              scrollBeyondLastLine: false,
-              renderWhitespace: 'selection',
-              bracketPairColorization: { enabled: true },
-              guides: { bracketPairs: true },
-              cursorBlinking: 'smooth',
-              cursorSmoothCaretAnimation: 'on',
-              smoothScrolling: true,
-              mouseWheelScrollSensitivity: 1,
-              scrollbar: {
-                vertical: 'visible',
-                horizontal: 'visible',
-                useShadows: true,
-                verticalScrollbarSize: 10,
-                horizontalScrollbarSize: 10,
-                verticalSliderSize: 6,
-                horizontalSliderSize: 6,
-              },
-              matchBrackets: 'always',
-              folding: true,
-              foldingHighlight: true,
-              foldingStrategy: 'indentation',
-              showFoldingControls: 'always',
-              unfoldOnClickAfterEndOfLine: true,
-              contextmenu: true,
-              quickSuggestions: true,
-              suggestOnTriggerCharacters: true,
-              acceptSuggestionOnEnter: 'on',
-              tabCompletion: 'on',
-              wordBasedSuggestions: 'currentDocument',
-              parameterHints: {
-                enabled: true,
-                cycle: true,
-              },
-              hover: {
-                enabled: true,
-                delay: 300,
-                sticky: true,
-              },
-              formatOnPaste: true,
-              formatOnType: true,
-              suggest: {
-                preview: true,
-                showMethods: true,
-                showFunctions: true,
-                showConstructors: true,
-                showFields: true,
-                showVariables: true,
-                showClasses: true,
-                showStructs: true,
-                showInterfaces: true,
-                showModules: true,
-                showProperties: true,
-                showEvents: true,
-                showOperators: true,
-                showUnits: true,
-                showValues: true,
-                showConstants: true,
-                showEnums: true,
-                showEnumMembers: true,
-                showKeywords: true,
-                showWords: true,
-                showColors: true,
-                showFiles: true,
-                showReferences: true,
-                showFolders: true,
-                showTypeParameters: true,
-                showSnippets: true,
-              },
-            }}
-            onMount={(editor, monacoInstance) => handleEditorDidMount(editor, monacoInstance)}
-          />
-        </div>
-        {/* Resizer */}
-        <div
-          ref={resizerRef}
-          className="h-2 cursor-row-resize bg-gray-100 dark:bg-gray-700 w-full flex items-center justify-center"
-          onMouseDown={() => { draggingRef.current = true; }}
-          aria-label="Resize editor vertically"
-        >
-          <div className="w-12 h-1 rounded bg-gray-400 dark:bg-gray-500" />
-        </div>
+
+      {/* Editor Panel */}
+      <div className="flex-1">
+        <Editor
+          height="100%"
+          defaultLanguage={language}
+          value={value}
+          onChange={(value) => onChange(value || '')}
+          theme="light"
+          options={{
+            minimap: { enabled: minimap },
+            fontSize: fontSize,
+            tabSize: tabSize,
+            lineNumbers: lineNumbers ? 'on' : 'off',
+            fontFamily: 'JetBrains Mono, monospace',
+            lineHeight: 1.6,
+            wordWrap: 'on',
+            automaticLayout: true,
+            padding: { top: 16, bottom: 16 },
+            scrollBeyondLastLine: false,
+            renderWhitespace: 'selection',
+            bracketPairColorization: { enabled: true },
+            guides: { bracketPairs: true },
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+            smoothScrolling: true,
+            mouseWheelScrollSensitivity: 1,
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'visible',
+              useShadows: true,
+              verticalScrollbarSize: 10,
+              horizontalScrollbarSize: 10,
+              verticalSliderSize: 6,
+              horizontalSliderSize: 6,
+            },
+            matchBrackets: 'always',
+            folding: true,
+            foldingHighlight: true,
+            foldingStrategy: 'indentation',
+            showFoldingControls: 'always',
+            unfoldOnClickAfterEndOfLine: true,
+            contextmenu: true,
+            quickSuggestions: true,
+            suggestOnTriggerCharacters: true,
+            acceptSuggestionOnEnter: 'on',
+            tabCompletion: 'on',
+            wordBasedSuggestions: 'currentDocument',
+            parameterHints: {
+              enabled: true,
+              cycle: true,
+            },
+            hover: {
+              enabled: true,
+              delay: 300,
+              sticky: true,
+            },
+            formatOnPaste: true,
+            formatOnType: true,
+            suggest: {
+              preview: true,
+              showMethods: true,
+              showFunctions: true,
+              showConstructors: true,
+              showFields: true,
+              showVariables: true,
+              showClasses: true,
+              showStructs: true,
+              showInterfaces: true,
+              showModules: true,
+              showProperties: true,
+              showEvents: true,
+              showOperators: true,
+              showUnits: true,
+              showValues: true,
+              showConstants: true,
+              showEnums: true,
+              showEnumMembers: true,
+              showKeywords: true,
+              showWords: true,
+              showColors: true,
+              showFiles: true,
+              showReferences: true,
+              showFolders: true,
+              showTypeParameters: true,
+              showSnippets: true,
+            },
+          }}
+          onMount={(editor, monacoInstance) => handleEditorDidMount(editor, monacoInstance)}
+        />
       </div>
+
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-4 py-1 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 font-mono">
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 font-mono">
         <div>
           Ln {cursorPos.line}, Col {cursorPos.column}
         </div>
         <div>
           {saveStatus === 'saved' ? (
-            <span className="text-green-600 dark:text-green-400">● Saved</span>
+            <span className="text-green-600">● Saved</span>
           ) : (
-            <span className="text-yellow-600 dark:text-yellow-400">● Unsaved</span>
+            <span className="text-yellow-600">● Unsaved</span>
           )}
         </div>
         <div>
