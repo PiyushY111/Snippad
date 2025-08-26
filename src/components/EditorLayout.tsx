@@ -14,6 +14,7 @@ import type { File, Snippet, Runtime, LanguageOption } from '../types';
 import toast, { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from './ErrorBoundary';
 
+
 const languageOptions: LanguageOption[] = [
   { label: 'JavaScript', value: 'javascript', ext: 'js', icon: <FileCode2 size={16} /> },
   { label: 'TypeScript', value: 'typescript', ext: 'ts', icon: <FileCode2 size={16} /> },
